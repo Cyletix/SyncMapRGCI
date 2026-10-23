@@ -1,0 +1,71 @@
+{
+  "manifest_version": 1,
+  "worktree": {
+    "role": "NSGD and RG research",
+    "code_truth": "repository root",
+    "docs_truth": "docs/"
+  },
+  "cli": {
+    "public_entrypoint": "python main.py --task ...",
+    "default_task": 1,
+    "public_tasks": {
+      "0": "single_test",
+      "1": "run_live",
+      "2": "all_experiments",
+      "4": "trace_scores",
+      "5": "render_trace",
+      "6": "analyze_sequence_information",
+      "7": "scaling_law"
+    }
+  },
+  "runtime": {
+    "public_strategies": [
+      "ns",
+      "nsgd",
+      "tsf",
+      "ci",
+      "syncmap",
+      "rg",
+      "symmetric"
+    ],
+    "primary_profiles": [
+      "nsgd",
+      "rg"
+    ],
+    "baseline_profiles": [
+      "syncmap",
+      "symmetric",
+      "tsf"
+    ],
+    "sensitivity_profiles": [
+      "rg_shortmem",
+      "rg_shortmem_l0",
+      "tsf_longmem",
+      "tsf_velocity_longmem"
+    ],
+    "profile_source": "tools/main_config.py",
+    "rg_defaults": "syncmap/SyncMapRG.py::SyncMapX_RG.DEFAULT_PARAMS",
+    "formal_evaluation": {
+      "readout": "unsupervised geometry",
+      "hierarchy_ari": "mean over every required hierarchy level; missing levels score zero",
+      "hierarchy_nmi": "fixed-level diagnostic",
+      "historical_raw_hierarchy_ari": "worst-level diagnostic"
+    }
+  },
+  "environment": {
+    "runtime_modules": "test/",
+    "dataset_root": "datasets/",
+    "hierarchy_root": "datasets/hierarchy/"
+  },
+  "outputs": {
+    "helper": "tools/result_paths.py",
+    "experiments": "results/experiment/",
+    "figures": "results/picture/",
+    "snapshots": "results/snapshots/"
+  },
+  "evidence": {
+    "benchmark_report": "results/benchmark/REPORT.md",
+    "benchmark_results": "results/benchmark/comparison_full_results.csv",
+    "benchmark_runner": "tools/benchmark.py"
+  }
+}
