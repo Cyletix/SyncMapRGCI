@@ -23,7 +23,7 @@ from tools.gui_runtime import configure_gui_environment
 configure_gui_environment()
 
 import matplotlib
-matplotlib.use("Qt5Agg") # 保持交互式后端
+matplotlib.use("Qt5Agg") # keep the interactive backend
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.collections import LineCollection, PathCollection
@@ -42,9 +42,9 @@ else:
         class _Axes3DDummy(Axes): pass
         Axes3D = _Axes3DDummy
     try:
-        # 3D 线段集合，用于 3D 模式下的聚类连边
+        # 3-D line collection for the cluster edges in 3-D mode
         from mpl_toolkits.mplot3d.art3d import Line3DCollection
-    except Exception:  # pragma: no cover - 极端环境下回退为 2D 类型
+    except Exception:  # pragma: no cover - fall back to the 2-D type in unusual environments
         Line3DCollection = LineCollection  # type: ignore[assignment]
 
 from numpy.typing import NDArray
@@ -61,7 +61,7 @@ from test.hierarchy_levels import (
     cluster_level_key_from_index,
     parse_hierarchy_label_index,
 )
-# 移除旧的特定引用，只保留统一入口
+# Old per-strategy imports removed; only the unified entry point remains.
 from unified_experiments import (
     EvaluationReadoutConfig,
     _advance_model_chunk,
@@ -82,7 +82,7 @@ ClusterCollection: TypeAlias = LineCollection | Line3DCollection
 FloatArray = NDArray[np.floating[Any]]
 IntArray = NDArray[np.integer[Any]]
 
-DATASET = "datasets/chain_mixed5_6.dot" # 默认值
+DATASET = "datasets/chain_mixed5_6.dot" # default
 
 DISPLAY_LABELS: dict[str, str] = {
     'base_wall': 'wall',
@@ -100,7 +100,7 @@ DISPLAY_LABELS: dict[str, str] = {
 
 # Legend: no artificial class-count limit — always use native legend.
 
-if hasattr(Axes3D, "_button_release") and not getattr(Axes3D, "_elrion_safe_button_release", False):
+if hasattr(Axes3D, "_button_release") and not getattr(Axes3D, "_syncmaprgci_safe_button_release", False):
     def _safe_button_release(self: Any, _event: Any) -> None:
         self.button_pressed = None
         fig = getattr(self, "figure", None)
@@ -110,7 +110,7 @@ if hasattr(Axes3D, "_button_release") and not getattr(Axes3D, "_elrion_safe_butt
             toolbar.push_current()
 
     Axes3D._button_release = _safe_button_release  # type: ignore[attr-defined]
-    Axes3D._elrion_safe_button_release = True  # type: ignore[attr-defined]
+    Axes3D._syncmaprgci_safe_button_release = True  # type: ignore[attr-defined]
 
 class LiveTuner:
     def __init__(
@@ -189,10 +189,10 @@ class LiveTuner:
         self.louvain_knn_k: int = 0
         self.louvain_mutual_knn: bool = True
         
-        # UI 初始化需要的变量，防止 setup 前报错
+        # Variables the UI needs at init, so nothing fails before setup.
         self.init_space_size = float(self._strategy_params.get('space_size', 0.0))
 
-        # 初始化环境和模型
+        # Initialise the environment and model.
         self._setup_simulation(dataset)
         self._initial_seed = self._seed
         self._space_override_enabled: bool = self.init_space_size > 0.0
@@ -227,7 +227,7 @@ class LiveTuner:
 
         dataset_name = Path(self._ds_path).stem
 
-        # === 绘图初始化 ===
+        # === Plot setup ===
         if self.readonly:
             figure_size = (10, 7.9)
             self._plot_rect = (0.06, 0.07, 0.68, 0.88)
@@ -253,7 +253,7 @@ class LiveTuner:
 
         self._theme: str = 'dark'
         self._accent_color: str = "#6970ac"
-        # 初始化调色盘到实例属性，便于跨方法统一取色
+        # Keep the palette on the instance so every method uses the same colours.
         self._palette: dict[str, Any] = {}
         self._color_fig_bg = ''
         self._color_ax_bg = ''
@@ -273,11 +273,11 @@ class LiveTuner:
         self.max_relation_arrows: int = 300
 
         self.scatter: PathCollection
-        # 2D 使用 LineCollection，3D 使用 Line3DCollection
+        # 2-D uses LineCollection, 3-D uses Line3DCollection.
         self.cluster_lines: ClusterCollection | None = None
         self.edge_arrows: Artist | None = None
 
-        # ... (UI Layout 变量初始化)
+        # ... (UI layout variable initialisation)
         self._panel_items: list[tuple[Axes, tuple[float, float, float, float]]] = []
         self._panel_all_axes: set[Axes] = {self.ax_panel}
         self._panel_cursor_y = 0.0
@@ -359,7 +359,7 @@ class LiveTuner:
         self.s_line_obstacle_radius_rel: Slider | None = None
         self.b_louvain_mutual: Button | None = None
 
-        # 可选数据集列表（用于 live 切换）
+        # Selectable datasets (for switching in the live view).
         self._dataset_paths: list[str] = []
         self._dataset_index: int = 0
         self._legend = None
@@ -1634,8 +1634,8 @@ class LiveTuner:
 
     def _setup_simulation(self, dataset: str) -> None:
         """
-        初始化仿真环境和模型。
-        核心逻辑：完全依赖统一工厂 create_model，不再进行手动分发。
+        Initialise the simulation environment and model.
+        Relies entirely on the unified create_model factory; there is no manual dispatch.
         """
         use_preloaded = self._preloaded_model is not None and self._preloaded_env is not None
         if use_preloaded:
@@ -1644,7 +1644,7 @@ class LiveTuner:
         else:
             np.random.seed(int(self._seed))
             try:
-                # === 唯一入口：调用工厂 ===
+                # === Single entry point: call the factory ===
                 model_params = {
                     key: value
                     for key, value in self._strategy_params.items()
@@ -1662,19 +1662,19 @@ class LiveTuner:
                 raise e
             
         self.output_size = self.env.getOutputSize()
-        self._impl_name = (self._variant_name or self._strategy_name).upper() # 用于显示标题
+        self._impl_name = (self._variant_name or self._strategy_name).upper() # used for the display title
         self._eval_label_level = self._infer_eval_label_level()
         self._hierarchy_outputs_cache = None
         self._hierarchy_outputs_step = -10**9
         self._formal_eval_cache = None
         self._formal_eval_step = -10**9
 
-        # 读取一些默认值用于 UI 初始化
+        # Read some defaults for UI initialisation.
         ADAPTATION_RATE = 0.1
         self.default_step_scale = self._live_adaptation_rate(ADAPTATION_RATE)
         self.total_steps = 0
         
-        # 图参数默认值
+        # Graph parameter defaults.
         graph_model = self._graph_control_target_model()
         self.T_push: int = getattr(graph_model, 'T_push', getattr(self.model, 'T_push', 10))
         self.knn: int = getattr(graph_model, 'knn', getattr(self.model, 'knn', 3))
@@ -1687,10 +1687,10 @@ class LiveTuner:
         self.graph_r0_rel: float = self._graph_r0_slider_value()
         self._k_attr_slider_default = self._k_attr_slider_value()
 
-        # 聚类参数默认值直接从当前目标模型读取；不再重写为 level-specific 参数。
+        # Clustering defaults are read from the current target model; they are no longer rewritten as level-specific parameters.
         self._sync_live_clustering_state_from_model()
         
-        # 补丁：确保 update_params 方法存在
+        # Patch: make sure update_params exists.
         if not hasattr(self.model, "update_params"):
             print(f"[Warn] Model {type(self.model)} missing update_params, adding dummy.")
             self.model.update_params = lambda **kwargs: None
@@ -1749,7 +1749,7 @@ class LiveTuner:
             min_samples=None if self._formal_readout_min_samples_locked else self.dbscan_min_samples,
         )
 
-    # --- UI 构建代码 ---
+    # --- UI construction ---
 
     def _panel_add_axes(self, height: float) -> Axes:
         px, py, pw, ph = self._panel_rect
@@ -2040,7 +2040,7 @@ class LiveTuner:
         return int(np.argmin(diffs))
 
     def _init_dataset_list(self) -> None:
-        """扫描 datasets/ 目录，构建可用数据集列表，并记录当前索引。"""
+        """Scan datasets/, build the list of available datasets and record the current index."""
         try:
             ds_path = Path(self._dataset_path())
             ds_dir = ds_path.parent if ds_path.parent.exists() else Path("datasets")
@@ -2065,7 +2065,7 @@ class LiveTuner:
         return paths
 
     def _advance_dataset(self, step: int = 1) -> None:
-        """在可用数据集中循环切换，跳过不兼容数据集。"""
+        """Cycle through the available datasets, skipping incompatible ones."""
         paths = self._available_datasets()
         if not paths or not self._dataset_switch_enabled():
             return
@@ -2102,8 +2102,8 @@ class LiveTuner:
 
     def _switch_dataset_path(self, new_path: str) -> bool:
         """
-        切换 env 的底层图到新的 .dot 文件，但不重置模型权重。
-        要求输出维度相同（GraphWalkTest.switch_dataset 内部会检查）。
+        Switch the environment's underlying graph to a new .dot file without resetting the model weights.
+        The output dimension must stay the same (checked inside GraphWalkTest.switch_dataset).
         """
         env = getattr(self, "env", None)
         if env is None:
@@ -2118,7 +2118,7 @@ class LiveTuner:
             print(f"[Warn] Failed to switch dataset to {new_path}: {e}")
             return False
 
-        # 更新当前路径并强制重新计算聚类 / 指标
+        # Update the current path and force clustering / metrics to be recomputed.
         self._ds_path = new_path
         self._sync_model_hierarchy_capacity_after_dataset_switch()
         self._eval_label_level = self._infer_eval_label_level()
@@ -2636,12 +2636,12 @@ class LiveTuner:
         def on_any_slider(_val: float | None = None) -> None:
             if getattr(self, '_suppress_slider_events', False): return
 
-            # 读取滑块值
+            # Read the slider values.
             val_base_wall = self._to_float(self._require_slider(self.s_base_wall, 'base_wall').val)
             val_density = self._to_float(self._require_slider(self.s_density_ref, 'density_ref').val)
             val_space = self._to_float(self._require_slider(self.s_space_size, 'space_size').val)
             
-            # [Fix 1: 更新 LiveTuner 的本地状态]
+            # [Fix 1: update LiveTuner's local state]
             self.dbscan_eps = self._to_float(self._require_slider(self.s_eps, 'eps').val)
             self.dbscan_readout_eps = self._to_float(self._require_slider(self.s_readout_eps, 'readout_eps').val)
             self.dbscan_min_samples = int(round(self._to_float(self._require_slider(self.s_minp, 'minPts').val)))
@@ -2670,7 +2670,7 @@ class LiveTuner:
                     finally:
                         self._suppress_slider_events = prev_state
 
-            # 构建 update_params 参数字典
+            # Build the update_params argument dict.
             k_attr_value = min(
                 self._to_float(self._require_slider(self.s_k_attr, 'k_attr').val),
                 self._k_attr_slider_limit(),
@@ -4170,7 +4170,7 @@ class LiveTuner:
         return getattr(self, "_ds_path", DATASET)
 
     def _reset_playback(self) -> None:
-        """重置预录制轨迹的播放游标，并将模型同步到第 0 帧。"""
+        """Reset the playback cursor of the recorded trajectory and sync the model to frame 0."""
         self._traj_cursor = 0
         if self._precomputed_traj is None:
             return
@@ -4270,7 +4270,7 @@ class LiveTuner:
     def _update_metrics_and_plot(self, recompute_labels: bool = True) -> None:
         labels_pred: NDArray[np.integer[Any]] | None
         
-        # hierarchy 模型也要尊重重算节流，否则每帧都会强制 organize_hierarchy()
+        # Hierarchy models also respect the recompute throttle; otherwise every frame would force organize_hierarchy().
         if bool(getattr(self.env, 'is_hierarchical', False)) and hasattr(self.model, 'organize'):
             if recompute_labels or self._last_labels is None:
                 try:
@@ -4285,7 +4285,7 @@ class LiveTuner:
             else:
                 labels_pred = self._last_labels
         else:
-            # 非 hierarchy 模型也使用和正式实验相同的统一读出。
+            # Non-hierarchy models also use the same unified readout as the formal experiments.
             if recompute_labels or self._last_labels is None:
                 self._last_cluster_step = int(self.total_steps)
                 labels_pred = self._current_predicted_labels(force=recompute_labels)
@@ -4301,14 +4301,14 @@ class LiveTuner:
         else:
             cast(Any, self.scatter)._offsets3d = (pos[:, 0], pos[:, 1], pos[:, 2])
         
-        # === [新增] 可视化质量 (Mass) ===
-        # 获取质量并归一化到合适的显示尺寸范围 (例如 10 ~ 100)
+        # === Visualise mass ===
+        # Get the mass and map it to a suitable display size range (e.g. 10-100).
         if hasattr(self.model, 'mass'):
             mass = self.model.mass
-            # 简单的线性映射: size = base_size + mass * factor
-            # 假设 mass 范围 1.0 ~ 50.0
+            # Simple linear mapping: size = base_size + mass * factor
+            # Assume mass lies in 1.0-50.0.
             sizes = 20.0 + (mass - 1.0) * 5.0 
-            # 限制一下最大显示尺寸，防止遮挡
+            # Cap the marker size so points do not hide each other.
             sizes = np.clip(sizes, 20.0, 150.0)
             self.scatter.set_sizes(sizes)
         # ==============================
@@ -4493,19 +4493,19 @@ def launch_live_from_result(
     display_name: str | None = None,
 ) -> LiveTuner:
     """
-    使用 run_single_test 的返回结果快速启动 Live GUI。
+    Launch the live GUI from a run_single_test result.
 
     Args:
-        result: run_single_test(include_model=True) 的返回字典，需要包含 syncmap 与 graphwalk。
-        dimension: Live 视图维度（2/3）。
-        playback: 若可用则使用记录的 trajectory 进行回放。
-        start_paused: 是否以暂停状态打开（方便拖动/观察）。
-        show: 是否立即调用 plt.show()。
+        result: dict returned by run_single_test(include_model=True); must contain syncmap and graphwalk.
+        dimension: live view dimension (2 or 3).
+        playback: replay the recorded trajectory when available.
+        start_paused: open paused (easier to rotate and inspect).
+        show: call plt.show() immediately.
     """
     syncmap = result.get('syncmap')
     env = result.get('graphwalk')
     if syncmap is None or env is None:
-        raise ValueError("Result缺少 syncmap / graphwalk，请在 run_single_test 时设置 include_model=True。")
+        raise ValueError("Result is missing syncmap / graphwalk; call run_single_test with include_model=True.")
 
     dataset = result.get('dataset')
     dataset_path = result.get('dataset_path')
@@ -4526,7 +4526,7 @@ def launch_live_from_result(
             try:
                 traj = np.asarray(syncmap.get_trajectory(), dtype=float)
             except Exception as exc:
-                print(f"[Warn] 无法读取轨迹，改为静态显示: {exc}")
+                print(f"[Warn] Cannot read the trajectory, showing a static view: {exc}")
         if traj is None and hasattr(syncmap, "syncmap"):
             try:
                 traj = np.expand_dims(np.asarray(syncmap.syncmap, dtype=float), axis=0)

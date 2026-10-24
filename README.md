@@ -1,5 +1,7 @@
 # SyncMapRGCI
 
+**English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
+
 SyncMapRGCI is a research project towards self-organizing causal inference: a system that, without labels, discovers the hierarchical chunk structure hidden in a sequence and then infers the causal relations between those chunks. The long-term target is visual event sequences (research theme: *Visual Causal Inference through Hierarchical Chunking via Self-Organizing Dynamics*). It builds on SyncMap and SyncMapX from the Elrion project of the Laboratory of Intelligent Systems (LIS). This is my personal research and study vault, started in October 2025.
 
 The project has two parts:
@@ -7,26 +9,30 @@ The project has two parts:
 - **RG, Recursive Grouping (implemented).** Hierarchical chunking inside one geometric space. The same self-organizing kernel is applied again to the tokens produced by the level below, at a larger natural scale (x3.16 per level), so chunks and groups of chunks appear as nested clusters of one map.
 - **CI, Causal Inference (early experiments).** Directed relations: directed transition statistics, edge recovery on synthetic DAGs, line-graph / edge-token representations.
 
-Combining the two, causal relations between the chunks RG discovers, exists only as a rough prototype and is not part of this repository. All current experiments use synthetic graph-walk symbol sequences: a random walk over a `.dot` graph produces the input stream, and each model has to recover the graph's chunks (flat) or its nested chunk levels (hierarchy). Labels are used only for scoring.
+Combining the two, causal relations between the chunks RG discovers, exists only as a rough prototype and is not part of this repository. All current experiments use synthetic graph-walk symbol sequences: a random walk over a `.dot` graph produces the input stream, and each model has to recover the graph's chunks (flat) or its nested chunk levels (hierarchy). On hierarchy graphs the walk is generated from the nodes' multi-level labels: it mostly stays inside a chunk, sometimes moves to a sibling chunk and rarely to another group. Labels are used only for scoring.
 
 ![Hidden hierarchy of DCH1 and the map RG learns from the walk alone](results/benchmark/figures/hero_rg_DCH1.png)
 
-*Left: the hidden structure that generates the walk. Right: RG's map after 100,000 steps; the two groups are far apart, and zooming into each group shows its chunks as smaller clusters.*
+*Left: the hidden structure that generates the walk. Right: RG's map after 100,000 steps in its own 3-D coordinates; the two groups are far apart, and zooming into each group shows its chunks as smaller clusters.*
+
+**New here?** The [presentation](docs/presentation/index.html) (HTML slides with speaker notes; a single-file copy and a PDF are on the [releases page](https://github.com/Cyletix/SyncMapRGCI/releases)) explains RG step by step, from the original SyncMap to the results. The [documentation map](docs/README.md) lists everything else.
 
 ## Algorithms
 
 Main research lines:
 
-- `NSGD` (`nsgd`): first-order SyncMap dynamics. Exponentially weighted co-activity statistics define a thresholded k-nearest-neighbour relation graph; positions move by relation attraction and activity-dependent displacement, with per-point plasticity and bounded steps. It is the baseline used by the historical reports. File: `syncmap/SyncMapX_NSGD.py`.
-- `NS` (`ns`): the hierarchy-capable first-order kernel that evolved from NSGD. It runs standalone and is the per-level engine of RG; its behaviour is no longer identical to NSGD. File: `syncmap/SyncMapNS.py`.
-- `RG` (`rg`): recursive hierarchical extension built on `SyncMapNS`. Level 0 learns the raw symbols; each higher level receives tokens produced by unsupervised coarse-graining of the level below, with distance, update cadence and statistics memory growing geometrically across levels. Main forces: primitive contrastive force, transition-graph spring, local obstacle repulsion and bounded macro feedback. File: `syncmap/SyncMapRG.py`.
-- `CI` (`ci`): directed-transition baseline that runs independently from RG. `syncmap/SyncMapCI.py` provides directed transition statistics, edge-recovery evaluation, asymmetric node features and line-graph / edge-token representations; `syncmap/SyncMapX_CI.py` clusters prototype embeddings built on them. It is a research scaffold, not a completed causal-inference method.
+- `NSGD` (`nsgd`): first-order SyncMap dynamics. Exponentially weighted co-activity statistics define a thresholded k-nearest-neighbour relation graph; positions move by relation attraction and activity-dependent displacement, with per-point plasticity and bounded steps. It is the strongest baseline in the benchmark. File: `syncmap/SyncMapX_NSGD.py`.
+- `NS` (runtime `ns`, selected with `--strategy ns`; no preset): the hierarchy-capable first-order kernel that evolved from NSGD. It runs standalone and is the per-level engine of RG; its behaviour is no longer identical to NSGD. File: `syncmap/SyncMapNS.py`.
+- `RG` (`rg`): recursive hierarchical extension built on `SyncMapNS`. Level 0 learns the raw symbols; each higher level receives tokens produced by unsupervised coarse-graining of the level below, with distance, update cadence and statistics memory growing geometrically across levels. Main forces: primitive contrastive force, transition-graph spring, local obstacle repulsion and bounded macro feedback. RG also keeps its own per-level partitions (`cluster_level1` is level 0 on the original symbols, `cluster_levelN` is level N-1 lifted back to them), shown in the viewer and snapshot JSON; they are not used for scoring. File: `syncmap/SyncMapRG.py`.
+- `CI` (runtime `ci`, selected with `--strategy ci`; no preset): directed-transition baseline that runs independently from RG. `syncmap/SyncMapCI.py` provides directed transition statistics, edge-recovery evaluation, asymmetric node features and line-graph / edge-token representations; `syncmap/SyncMapX_CI.py` clusters prototype embeddings built on them. It is a research scaffold, not a completed causal-inference method.
 
 Comparison baselines:
 
-- `SyncMap` (`syncmap`): original SyncMap with a constant learning rate and DBSCAN readout. File: `syncmap/SyncMap.py`.
-- `Symmetric` (`symmetric`): Symmetrical SyncMap with memory window, symmetric positive/negative sampling and moving-average readout. File: `syncmap/SyncMapX_Symmetric.py`.
-- `TSF` (`tsf`): TSFMap-style centroid dynamics with post-hoc agglomerative hierarchy readout. File: `syncmap/SyncMapTSF.py`.
+- `SyncMap` (`syncmap`): original SyncMap with a constant learning rate and its own DBSCAN readout. File: `syncmap/SyncMap.py`.
+- `Symmetric` (`symmetric`): Symmetrical SyncMap with memory window, symmetric positive/negative sampling and its own moving-average readout. File: `syncmap/SyncMapX_Symmetric.py`.
+- `TSF` (`tsf`): TSFMap-style centroid dynamics with its own post-hoc agglomerative hierarchy readout. File: `syncmap/SyncMapTSF.py`.
+
+The models' own readouts are used by the viewer; every score in this repository comes from one shared readout of the coordinates (see [Evaluation](#evaluation)).
 
 ## Origin
 
@@ -49,11 +55,11 @@ conda activate syncmaprgci
 pip install -r requirements.txt
 ```
 
-Without root access, `conda install -c conda-forge pygraphviz` installs Graphviz together with `pygraphviz`. `PyQt5` and a display are only needed for the interactive viewer (task 1). On a headless machine, set `MPLBACKEND=Agg`.
+Without root access, `conda install -c conda-forge pygraphviz` installs Graphviz together with `pygraphviz`. `PyQt5` and a display are only needed for the interactive viewer (task 1, and task 0 with `--live`). On a headless machine, set `MPLBACKEND=Agg`.
 
 ## Usage
 
-`main.py` is the single entry point; run from the repository root. Dataset paths may omit `datasets/`.
+`main.py` runs every experiment task; the scripts in `tools/` build the benchmark, the supplementary experiments and their reports on top of it. Run from the repository root. Dataset paths may omit `datasets/`.
 
 Watch all five models learn the deep hierarchy side by side, with live ARI/NMI curves (needs Qt and a display):
 
@@ -61,13 +67,13 @@ Watch all five models learn the deep hierarchy side by side, with live ARI/NMI c
 python main.py --task 1 --strategy syncmap symmetric tsf nsgd rg --dataset hierarchy/IEH_fixed_chunk_deep_hierarchy.dot --steps 1000000 --record-interval 5000 --seed 0
 ```
 
-One RG run on DCH1 with the final map (PNG), the training trajectory (GIF) and its ARI curve, written to `results/picture/` and `results/animations/`. It ends with `result: ... ari=0.8836 ... L1=0.7671 L2=1.0000`:
+One RG run on DCH1 with the final map (PNG), the training trajectory (GIF) and its ARI curve, written to `results/picture/`, `results/animations/` and `results/snapshots/`. Its `result:` line reads `... ari=0.8836 ... L1=0.7671 L2=1.0000`:
 
 ```bash
 python main.py --task 0 --strategy rg --dataset hierarchy/DCH1_fixed_chunk_6_3.dot --steps 100000 --seed 0 --save-png true --save-gif true --trace true --save-plot true
 ```
 
-Batch comparison over every flat and hierarchy graph, five seeds, CSV and Markdown report in `results/experiment/<timestamp>/` (long-running):
+Batch comparison over the 39 flat graphs in `datasets/` and the 10-graph hierarchy suite (`--datasets flat hierarchy`, 49 graphs), five seeds, CSV and Markdown report in `results/experiment/<timestamp>/` (long-running):
 
 ```bash
 python main.py --task 2 --datasets flat hierarchy --profiles syncmap symmetric tsf nsgd rg --comparison-sequence-lengths 5000 100000 --comparison-trials 5 --metric ari --seed 0
@@ -86,23 +92,23 @@ python tools/benchmark.py run
 Shared input environment:
 
 - Map dimension: 3.
-- Input encoder: the walk moves to the next node every 10 input steps (`TIME_DELAY = 10`); the input vector holds the current node with decay `exp(-0.1 t)` plus a weaker trace of the previous node.
+- Input encoder: each node is held for 11 input steps (`TIME_DELAY = 10`); the input vector holds the current node with decay `exp(-0.1 t)` plus a weaker trace of the previous node. On hierarchy graphs the walk jumps between chunks with probability 0.45, and between groups k levels further up with probability 0.45 × 0.25^k ([details](docs/DESIGN_REFERENCE.md#input-environments)).
 - Learning rate (`adaptation_rate`): NSGD and RG 0.05, TSF 0.001; SyncMap and Symmetric use `clip(0.001 x number_of_symbols, 0.05, 0.1)`. `--set adaptation_rate=...` overrides any of them.
 
-Profile parameters (`tools/main_config.py`, `VARIANT_CONFIGS`):
+Profile parameters (`tools/main_config.py`, `VARIANT_CONFIGS`); the readout settings listed here are the models' own readouts, not the scoring readout:
 
 - `nsgd`: `adaptation_rate=0.05`, `stats_memory_steps=100`, `plasticity_decay=0.99`, `plasticity_min=0.01`, `plasticity_recovery=1.0`, `knn=12`, `graph_theta=0.1`, `k_attr=1.0`, `k_pulse=2.0`, `k_repulse=0.0`, `max_step_norm=5.0`, `T_push=10`, readout DBSCAN `eps=1.0`, `min_samples=3`, re-clustered every 100 steps.
-- `rg`: no overrides; uses `SyncMapX_RG.DEFAULT_PARAMS` in `syncmap/SyncMapRG.py`. Key values: `adaptation_rate=0.05`, `level_count=2` (raised automatically to the dataset depth on hierarchy graphs; flat graphs disable the upper level), `stats_mode=transition`, `stats_memory_steps=300` with `stats_memory_scale=10` per level, distance scale x3.16 per level, `warmup_steps=2000`, `k_attr=0.07`, `k_repulse=1.0`, `k_macro_repulse=0.1`, readout `physical_mst_gaps`.
+- `rg`: no overrides; uses `SyncMapX_RG.DEFAULT_PARAMS` in `syncmap/SyncMapRG.py`. Key values: `adaptation_rate=0.05`, `level_count=2` (raised automatically to depth + 1 levels on hierarchy graphs, e.g. 3 on DCH1 and 5 on IEH; flat graphs disable the upper level), `stats_mode=transition`, `stats_memory_steps=300` with `stats_memory_scale=10` per level, distance scale x3.16 per level, `warmup_steps=2000`, `k_attr=0.07`, `k_repulse=1.0`, `k_macro_repulse=0.1`, readout `physical_mst_gaps`.
 - `syncmap`: DBSCAN `eps=3.0`, `min_samples=2`, `space_size=10`.
 - `symmetric`: `state_memory=3`, `stochastic_prob=0.3`, `moving_average_window=10000`, DBSCAN `eps=4.5`, `min_samples=2`.
 - `tsf`: `adaptation_rate=0.001`, `velocity_decay=0.999`, `mu_pos=6`, `mu_neg=3`, `mu_repulse=2`, Ward agglomerative readout with `target_levels=3` and 2-16 clusters.
 - Sensitivity presets: `rg_shortmem`, `rg_shortmem_l0`, `tsf_longmem`, `tsf_velocity_longmem`. These are controlled variants, not separate algorithms.
 
-Task 2 defaults (`MAIN_CONFIG`): profiles `syncmap nsgd rg tsf`, sequence lengths 5,000 and 100,000, 5 trials, metric ARI.
+Task 2 defaults (`MAIN_CONFIG`): sequence lengths 5,000 and 100,000, 5 trials, metric ARI. Without `--profiles`, task 2 runs `syncmap nsgd rg tsf` as strategies with their class defaults, not the presets above; pass `--profiles` to use the presets.
 
 ## Benchmark
 
-Eight scenarios that recur as showcase and diagnostic cases in the research notes, all five models, 100,000 input steps, five seeds (0-4). Full report with per-level scores, latent maps, score curves and a GIF for every model on every graph: [results/benchmark/REPORT.md](results/benchmark/REPORT.md).
+Eight representative scenarios, all five models, 100,000 input steps, five seeds (0-4). Full report with per-level scores, latent maps, score curves and a GIF for every model on every graph: [results/benchmark/REPORT.md](results/benchmark/REPORT.md).
 
 | Scenario | Family | Nodes | Classes (fine to coarse) | What it tests |
 |---|---|---:|---|---|
@@ -160,12 +166,32 @@ python tools/benchmark.py report
 
 The SyncMap and Symmetric baselines here use the constant learning rate of their papers.
 
+## Supplementary experiments
+
+Follow-ups designed after the benchmark, which could not say where NSGD or RG wins and whose hierarchies are too easy at the coarse level: 11 graphs (8 generated), the five models plus RG with recursion switched off, five paired seeds, 100,000 steps, scored as the mean of the last five checkpoints. Full report: [results/supp/REPORT.md](results/supp/REPORT.md).
+
+- **Community orientation decides the flat winner.** At a constant 300 states, RG beats NSGD on every seed from 3 communities of 100 to 15 of 20 (by 0.23-0.38 ARI); NSGD wins from 30 communities of 10 and is perfect on 60 of 5.
+- **Harder coarse levels separate the two.** When the walk mixes the top-level groups more, NSGD collapses on the new hierarchies (0.06-0.10) while RG keeps 0.17-0.42. At easy mixing they tie on two graphs, RG leads on DCH1 and NSGD leads on the three-level graph.
+- **The recursion is what helps.** RG without recursion is below full RG in all 12 hierarchy settings (by 0.05-0.31), more so the harder the mixing.
+- **The readout matters.** With the true cluster count (oracle-K diagnostic), RG's maps match or beat NSGD's in 11 of 12 settings; the formal MST cut costs every model 0.07-0.40 ARI.
+
+![ARI against community count at 300 states](results/supp/figures/orientation_sweep.png)
+
+![Level-mean ARI against coarse-level mixing](results/supp/figures/hierarchy_difficulty.png)
+
+```bash
+python tools/make_supp_datasets.py --stats
+python tools/supp_run.py run --workers 3
+python tools/supp_run.py showcase
+python tools/supp_report.py
+```
+
 ## Evaluation
 
-- Every method is scored by the same unsupervised geometry readout; ground-truth labels are used only for scoring, never to pick a level.
-- Flat graphs: ARI / NMI of the level-1 clustering.
-- Hierarchy graphs: the formal ARI is the mean of `cluster_level1` ... `cluster_levelN` over the required depth, and a missing level scores zero. NMI stays a fixed-level diagnostic; cophenetic correlation and per-level scores give extra context.
-- RG levels: `cluster_level1` is Level 0 on the original symbols, `cluster_levelN` is Level N-1 lifted back to the original symbols.
+- Every method is scored by the same unsupervised readout of its current coordinates; ground-truth labels are used only for scoring, never to pick a level.
+- Flat graphs: DBSCAN on standardised coordinates (eps = 1.25 × the median k-distance, `min_samples=2`); ARI / NMI of that partition.
+- Hierarchy graphs: cuts of the Euclidean minimum spanning tree at large neighbouring-edge gaps (ratio ≥ 1.05), one cut per required level. The formal ARI is the mean of `cluster_level1` ... `cluster_levelN` over the required depth, and a missing level scores zero. NMI stays a fixed-level diagnostic; cophenetic correlation and per-level scores give extra context.
+- Diagnostic only: `oracle_cluster_levelN_ari_score` cuts the same coordinates with Ward clustering at the true cluster count. A high oracle score with a low formal score means the map holds the structure and the readout misses it.
 - With `--seed`, the input stream comes from an environment-private random stream, so every model sees the same sequence for a given seed.
 
 ## Repository layout
@@ -175,14 +201,16 @@ The SyncMap and Symmetric baselines here use the constant learning rate of their
 - `live.py`: interactive viewer backend (task 1).
 - `syncmap/`: algorithm implementations.
 - `test/`: runtime graph-walk and hierarchy environments, plus focused unit tests.
-- `tools/`: profiles (`main_config.py`), readout and metrics, plotting, CSV summaries, analysis scripts.
-- `datasets/`: synthetic `.dot` graphs; hierarchical graphs in `datasets/hierarchy/`.
-- `results/benchmark/`: the benchmark report, comparison CSV, figures and GIFs. Other `results/` folders are run outputs and are not tracked.
-- `docs/`: design reference, CLI reference, output locations, plan and limitations.
+- `tools/`: profiles (`main_config.py`), readout and metrics, plotting, CSV summaries, the benchmark (`benchmark.py`), the supplementary experiments (`make_supp_datasets.py`, `supp_run.py`, `supp_report.py`) and the presentation diagrams (`deck_figures.py`).
+- `datasets/`: synthetic `.dot` graphs; hierarchical graphs in `datasets/hierarchy/`; graphs generated for the supplementary experiments in `datasets/supp/`.
+- `results/benchmark/`: the benchmark report, comparison CSV, figures and GIFs. `results/supp/`: the supplementary report, comparison CSV and figures. Other `results/` folders are run outputs and are not tracked.
+- `docs/`: documentation map, presentation, design reference, CLI reference, output locations, plan and limitations.
 
 ## Documentation
 
-- [Benchmark report](results/benchmark/REPORT.md)
+- [Documentation map](docs/README.md)
+- [Presentation](docs/presentation/index.html) (HTML slides; single file and PDF on the [releases page](https://github.com/Cyletix/SyncMapRGCI/releases))
+- [Benchmark report](results/benchmark/REPORT.md) and [supplementary report](results/supp/REPORT.md)
 - [Design and evaluation](docs/DESIGN_REFERENCE.md)
 - [CLI reference](docs/CLI_REFERENCE.md)
 - [Repository layout](docs/PROJECT_STRUCTURE.md)
@@ -192,6 +220,8 @@ The SyncMap and Symmetric baselines here use the constant learning rate of their
 ## Limitations
 
 - Equal input steps do not mean equal compute or equal memory between methods.
-- The benchmark covers five synthetic graphs; it shows behaviour on representative cases, not general superiority.
-- Hierarchy auto-detection is path-based (`datasets/hierarchy/`); other hierarchical graphs need `--env-mode hierarchy_sequence`.
+- The benchmark covers eight synthetic graphs and the supplementary experiments eleven (eight of them generated for it); they show behaviour on representative and controlled cases, not general superiority.
+- The hierarchy readout is a single-checkpoint MST gap cut. It can miss coarse groups that a map separates clearly; compare with the oracle-K columns before reading a low coarse-level score as a representation failure.
+- RG's default level scheduler aliases the deep clocks, so levels above L1 receive little evidence within 100,000 steps ([details](docs/ISSUES_LOG.md)).
+- Hierarchy datasets are detected by path (`datasets/hierarchy/`) or by `.dot` content (internal nodes or multi-level labels); `--env-mode` overrides the detection.
 - CI is exploratory; a validated causal-inference system has not been established.

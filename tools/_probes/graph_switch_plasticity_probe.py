@@ -24,9 +24,9 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import adjusted_rand_score
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
-os.environ.setdefault("MPLCONFIGDIR", "/tmp/elrion-matplotlib")
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/syncmaprgci-matplotlib")
 
 from tools.main_config import VARIANT_CONFIGS  # noqa: E402
 from tools.result_paths import experiment_archive_dir, timestamp_now  # noqa: E402

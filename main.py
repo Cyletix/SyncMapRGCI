@@ -1270,7 +1270,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--comparison-trace-plot", nargs="?", const="true", default=False, type=_parse_cli_bool, help="During task 2, save a learning-curve plot for each finished comparison case")
     parser.add_argument("--comparison-plot-metric", default="auto", choices=["auto", "nmi", "ari"], help="Metric to plot for task 2 integrated learning-curve exports")
     parser.add_argument("--comparison-record-interval", type=int, default=None, help="Sampling interval for task 2 integrated artifact exports")
-    parser.add_argument("--late-window-points", type=int, default=5, help="Number of trailing learning-curve points to average into late_mean/late_std columns (default: 5).")
+    parser.add_argument("--late-window-points", type=int, default=5, help="Number of trailing learning-curve points to average into late_mean/late_std columns")
     parser.add_argument("--comparison-include-hierarchy", action="store_true", help="For task 2 comparison, also include datasets under datasets/hierarchy")
     parser.add_argument("--test-subset", action="store_true", help="Use the representative fast-test subset for task 2")
     parser.add_argument("--resume-mode", default="auto", choices=["auto", "off"], help="Task 2 comparison partial-results policy")
@@ -1278,23 +1278,23 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--memory-profile", default=None, choices=list(MEMORY_PROFILE_CHOICES), help="High-level memory family selector")
     parser.add_argument("--label-level", type=int, default=None, help="Hierarchy label level override for evaluation")
     parser.add_argument("--diag-distance", nargs="?", const="true", default=None, type=_parse_cli_bool, help="Show extra distance diagnostics for task 0")
-    parser.add_argument("--trace", nargs="?", const="true", default=False, type=_parse_cli_bool, help="For task 0, also export a score trace and curve. This reruns the experiment in trace mode.")
+    parser.add_argument("--trace", nargs="?", const="true", default=False, type=_parse_cli_bool, help="For task 0, sample the score curve during the run and export it (JSON and curve PNG). Add --print-trace to rerun in trace mode and print per-level summaries.")
     parser.add_argument("--trace-record-interval", type=int, default=None, help="Sampling interval for task 0 trace mode; defaults to --record-interval or an auto value.")
     parser.add_argument("--live", nargs="?", const="true", default=False, type=_parse_cli_bool, help="Open the read-only post-run GUI after task 0")
-    parser.add_argument("--live-playback", default=None, type=_parse_bool_token)
-    parser.add_argument("--live-start-paused", default=None, type=_parse_bool_token)
-    parser.add_argument("--live-dimension", type=int, default=None)
-    parser.add_argument("--save-gif", nargs="?", const="true", default=None, type=_parse_cli_bool, help="For task 0, export a trajectory GIF")
+    parser.add_argument("--live-playback", default=None, type=_parse_bool_token, help="Post-run GUI: replay the recorded trajectory")
+    parser.add_argument("--live-start-paused", default=None, type=_parse_bool_token, help="Post-run GUI: open paused")
+    parser.add_argument("--live-dimension", type=int, default=None, help="Post-run GUI: view dimension (2 or 3)")
+    parser.add_argument("--save-gif", nargs="?", const="true", default=None, type=_parse_cli_bool, help="For task 0, export a trajectory GIF (on unless set to false)")
     parser.add_argument("--gif-path", default=None, help="Optional explicit GIF output path for task 0")
-    parser.add_argument("--save-png", nargs="?", const="true", default=None, type=_parse_cli_bool, help="For task 0, export the final static PNG")
+    parser.add_argument("--save-png", nargs="?", const="true", default=None, type=_parse_cli_bool, help="For task 0, export the final static PNG (on unless set to false)")
     parser.add_argument("--png-path", default=None, help="Optional explicit PNG output path for task 0")
     parser.add_argument("--label-source", default="pred", choices=["pred", "learned", "true", "both", "none"], help="For task 0 PNG/GIF/live labeling. Use both to export both true and predicted labeled assets.")
     parser.add_argument("--plot-path", default=None, help="Optional explicit plot output path for task 0 trace mode or task 4/5/7")
     parser.add_argument("--plot-metric", default="auto", choices=["auto", "nmi", "ari"], help="Trace-plot metric for task 0 trace mode / task 4 / task 5; auto follows --metric")
     parser.add_argument("--theme", default=DEFAULT_THEME, help="Visualization theme")
-    parser.add_argument("--accent-color", default=DEFAULT_ACCENT_COLOR)
+    parser.add_argument("--accent-color", default=DEFAULT_ACCENT_COLOR, help="Accent colour for plots")
     parser.add_argument("--save-plot", nargs="?", const="true", default=True, type=_parse_cli_bool, help="For task 0 trace mode / task 4 / task 5, save the curve PNG")
-    parser.add_argument("--print-trace", action="store_true")
+    parser.add_argument("--print-trace", action="store_true", help="With --trace, rerun task 0 in trace mode and print per-level trace summaries")
     parser.add_argument("--set", dest="set_overrides", action="append", default=None, metavar="KEY=VALUE", help="Algorithm-specific override. Repeat as needed.")
     return parser
 
@@ -1326,6 +1326,20 @@ def _selection_values(raw: Any) -> list[str]:
 
 
 def _validate_cli_contract(cli: argparse.Namespace, task: int) -> None:
+    for option in ("profile", "profiles"):
+        for token in _selection_values(getattr(cli, option, None)):
+            name = token.strip().lower()
+            if name in VARIANT_CONFIGS:
+                continue
+            available = ", ".join(list_target_profiles())
+            hint = ""
+            if name in {"ns", "ci"}:
+                flag = "--strategies" if option == "profiles" else "--strategy"
+                hint = f" '{name}' is a runtime without a preset: select it with {flag} {name}."
+            elif name == "strict":
+                hint = " 'strict' was renamed: use syncmap for the original SyncMap baseline."
+            raise SystemExit(f"Unknown --{option} value {token!r}. Available profiles: {available}.{hint}")
+
     for option in ("strategy", "strategies"):
         for token in _selection_values(getattr(cli, option, None)):
             if "--" in token:

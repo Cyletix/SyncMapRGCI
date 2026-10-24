@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize Elrion comparison CSV files as mean +/- std tables.
+"""Summarize SyncMapRGCI comparison CSV files as mean +/- std tables.
 
 The formal metric dimension is one of nmi or ari. The default summary metric
 is ari because it directly scores exact partition agreement and is robust to

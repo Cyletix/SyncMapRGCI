@@ -14,7 +14,7 @@ the same hierarchy-refresh cadence as the unified trainer, and params are
 resolved through the task-1/task-2 path so tuned profiles (e.g. rg) apply.
 
 Usage:
-    python tools/convergence_time_compare.py \
+    python tools/conv.py time \
         --datasets datasets/chain_mixed5_60.dot ... \
         --strategies syncmap symmetric rg tsf --seconds 60
 """
@@ -32,7 +32,7 @@ from typing import Any
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import matplotlib
@@ -58,7 +58,7 @@ from main import _resolve_runtime_selection  # noqa: E402
 # Shared helpers (colours, per-curve degradation stats, main-config cache).
 from tools._probes.convergence_compare import _color_for, _config, _curve_stats  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _aggregate_score(model, env, metric, readout_cfg, label_level, metric_key,

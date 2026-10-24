@@ -12,6 +12,8 @@ Shared runtime support remains at its original paths.
 | trace_rg_hierarchy_scores.py, render_rg_trace_plot.py | Sample and render score trajectories |
 | csv_summary.py | CSV summaries |
 | benchmark.py | Representative benchmark runner and report builder (results/benchmark/) |
+| make_supp_datasets.py, supp_run.py, supp_report.py | Supplementary experiments: graphs in datasets/supp/, the resumable run grid and its report (results/supp/) |
+| deck_figures.py | Diagrams of the presentation (docs/presentation/) and its single-file bundle |
 | sequence_information_analysis.py | Inspect input/environment statistics |
 | scaling_law.py | Scaling and trace analysis |
 | switch.py | Structural-switch probe and report dispatcher |

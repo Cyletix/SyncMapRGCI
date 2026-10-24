@@ -18,7 +18,8 @@
 - Models: SyncMap (`syncmap`), Symmetric (`symmetric`), TSFMap (`tsf`), NSGD (`nsgd`), RG (`rg`), each with its maintained profile.
 - Score: ARI against the true chunks; on hierarchy graphs the mean ARI over every required level (a missing level scores 0). NMI is reported alongside.
 - Comparison: `python main.py --task 2 --profiles syncmap symmetric tsf nsgd rg --datasets <file> --comparison-sequence-lengths 100000 --comparison-trials 5 --metric ari --seed 0`.
-- Showcase (figures, curves, GIFs): `python main.py --task 0 --profile <model> --dataset <file> --steps 100000 --seed 0 --trace true`.
+- Showcase (figures, curves, GIFs): `python main.py --task 0 --profile <model> --dataset <file> --steps 100000 --seed 0 --record-interval 1000 --trace true --trace-record-interval 2000 --save-json true --save-png false --save-plot false --save-gif false`; the figures and GIFs are drawn by `tools/benchmark.py report` from those runs.
+- The scores are the final checkpoint of each run. The [supplementary experiments](../supp/REPORT.md) average the last five checkpoints and add harder hierarchies.
 
 ## Results
 

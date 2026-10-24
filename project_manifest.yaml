@@ -46,26 +46,33 @@
     "profile_source": "tools/main_config.py",
     "rg_defaults": "syncmap/SyncMapRG.py::SyncMapX_RG.DEFAULT_PARAMS",
     "formal_evaluation": {
-      "readout": "unsupervised geometry",
+      "readout": "shared unsupervised geometry: DBSCAN (flat), Euclidean-MST gap cuts (hierarchy)",
       "hierarchy_ari": "mean over every required hierarchy level; missing levels score zero",
       "hierarchy_nmi": "fixed-level diagnostic",
-      "historical_raw_hierarchy_ari": "worst-level diagnostic"
+      "oracle_level_ari": "diagnostic only: Ward at the true cluster count per level"
     }
   },
   "environment": {
     "runtime_modules": "test/",
     "dataset_root": "datasets/",
-    "hierarchy_root": "datasets/hierarchy/"
+    "hierarchy_root": "datasets/hierarchy/",
+    "supplementary_root": "datasets/supp/"
   },
   "outputs": {
     "helper": "tools/result_paths.py",
     "experiments": "results/experiment/",
     "figures": "results/picture/",
+    "animations": "results/animations/",
+    "csv": "results/csv/",
     "snapshots": "results/snapshots/"
   },
   "evidence": {
     "benchmark_report": "results/benchmark/REPORT.md",
     "benchmark_results": "results/benchmark/comparison_full_results.csv",
-    "benchmark_runner": "tools/benchmark.py"
+    "benchmark_runner": "tools/benchmark.py",
+    "supplementary_report": "results/supp/REPORT.md",
+    "supplementary_results": "results/supp/run_comparison.csv",
+    "supplementary_runner": "tools/supp_run.py",
+    "presentation": "docs/presentation/index.html"
   }
 }

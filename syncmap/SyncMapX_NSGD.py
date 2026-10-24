@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Legacy NSGD implementation restored from commit cd10586e3b188d32173fa1cd73c8ce18541890c4.
+NSGD baseline implementation (first-order SyncMapX dynamics).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ IntArray = NDArray[np.intp]
 
 
 class _LegacyCoactivationStats:
-    """Archive-faithful coactivation stats used by the 2025-12 NSGD baseline."""
+    """Coactivation statistics used by the NSGD baseline."""
 
     def __init__(self, n: int, alpha: float = 0.01, max_lag: int = 0) -> None:
         self.n = int(n)

@@ -687,14 +687,14 @@ def visualize_syncmap_evolution(
     try:
         positions, steps, _mode = _extract_syncmap_positions(syncmap)
     except ValueError as exc:
-        print(f"⚠️ 无法绘制 SyncMap 位置: {exc}")
+        print(f"Warning: cannot plot SyncMap positions: {exc}")
         return None
 
     try:
         method_name = resolve_syncmap_method_name(syncmap)
         fig_ax = plot_syncmap_over_time(positions, resolved_labels, steps=steps, show=show, method_name=method_name)
     except Exception as exc:
-        print(f"⚠️ 绘制 SyncMap 轨迹时出错: {exc}")
+        print(f"Warning: error while plotting the SyncMap trajectory: {exc}")
         return None
     return fig_ax
 
@@ -720,11 +720,11 @@ def visualize_trajectory_animation(
     try:
         positions, steps, mode = _extract_syncmap_positions(syncmap)
     except ValueError as exc:
-        print(f"⚠️ 无法提取轨迹用于动画: {exc}")
+        print(f"Warning: cannot extract the trajectory for the animation: {exc}")
         return False
 
     if mode != "dynamic":
-        print("⚠️ 当前 SyncMap 没有可用于动画的时间序列数据。")
+        print("Warning: this SyncMap has no time-series data to animate.")
         return False
 
     if save_path is None and dataset is not None and strategy is not None:
@@ -752,6 +752,6 @@ def visualize_trajectory_animation(
             accent_color=accent_color,
         )
     except Exception as exc:
-        print(f"⚠️ 动画播放失败: {exc}")
+        print(f"Warning: animation playback failed: {exc}")
         return False
     return True

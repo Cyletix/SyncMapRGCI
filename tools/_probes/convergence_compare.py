@@ -10,7 +10,7 @@ Scores come from the canonical ``run_single_test`` path (same readout, same
 comparison), so the curves match reported numbers.
 
 Usage:
-    python tools/convergence_compare.py \
+    python tools/conv.py steps \
         --datasets datasets/hierarchy/IH_fixed_chunk_unbalanced.dot ... \
         --strategies syncmap symmetric rg tsf \
         --steps 100000 --interval 2000
@@ -29,7 +29,7 @@ from typing import Any
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import matplotlib
 
@@ -40,7 +40,7 @@ from tools.plot_theme import apply_basic_plot_theme, resolve_plot_palette  # noq
 from unified_experiments import run_single_test  # noqa: E402
 from main import _resolve_runtime_selection, _resolved_main_config  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _MAIN_CONFIG: dict[str, Any] | None = None
 

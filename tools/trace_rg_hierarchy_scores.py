@@ -18,11 +18,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
-from tools.metric_utils import nmi_iso_score
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from tools.metric_utils import nmi_iso_score
 from main import _default_strategy_from_config, _resolved_main_config, _trace_output_qualifier
 from tools.result_paths import classify_output_token, result_path, trace_result_paths
 from tools.plot_theme import apply_basic_plot_theme
@@ -279,9 +278,8 @@ def print_summary(trace: list[dict[str, Any]]) -> None:
         print(f"step={step:>7} | {' | '.join(fixed_parts + upper_parts)}")
 
 
-# ── 积分 / 累积 NMI 报告 ───────────────────────────────────
-# 用整条 trace 的 NMI 面积而非仅 peak/final 来衡量综合聚类效果。
-# 原 CMA-ES 优化器 trace_objective() 的 fitness 就是 joint_min_area。
+# ── Integrated / cumulative NMI report ─────────────────────
+# Measure overall clustering quality by the NMI area over the whole trace, not only peak/final.
 
 def _extract_metric_series(
     trace: list[dict[str, Any]],
@@ -735,7 +733,7 @@ def main() -> None:
     else:
         print("saved_json: false")
 
-    # 总是打印积分 NMI 摘要
+    # Always print the integrated NMI summary.
     print_integral_summary(record, metric=str(args.plot_metric))
 
     if bool(args.save_plot):

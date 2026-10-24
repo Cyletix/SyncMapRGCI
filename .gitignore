@@ -2,13 +2,18 @@ __pycache__
 venv
 .venv
 .vscode
-/adapted_weights
-results/
-/datasets/arc_agi
+results/*
+!results/benchmark/
+!results/supp/
+results/supp/cells/
+results/supp/logs/
+results/supp/pilot/
+results/supp/*_results.csv
 # main.py
 # docs
 *.code-workspace
 .*
 !.github/
 !.github/**
+!.gitignore
 temp

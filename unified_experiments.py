@@ -1859,7 +1859,7 @@ def get_test_comparison_datasets() -> list[str]:
 
 def create_model(dataset_path: str, strategy_name: str, strategy_params: dict[str, Any], *, trajectory_interval: int=50, record_trajectory: bool=False, environment_seed: int | None=None) -> Tuple[Any, Any]:
     """
-    统一模型工厂。修复了 module not callable 问题。
+    Unified model factory.
     """
 
     def _coerce_int(value: Any, fallback: int) -> int:
@@ -2202,7 +2202,7 @@ def run_single_comparison_test(
     try:
         metric_obj = metric or resolve_metric()
         
-        # 1. 运行实验 (create_model 会自动根据 strategy_name 找对引擎)
+        # 1. Run the experiment (create_model picks the engine from strategy_name).
         result = run_single_test(
             dataset_name=dataset_path,
             strategy_name=strategy_name,
@@ -2457,8 +2457,8 @@ def run_comparison_experiment(
     ``base_seed``: when given, trial i (1-based) seeds np.random with
     ``base_seed + i - 1``; when None, trials are fully random.
 
-    ``comparison_late_window_points`` defaults to the calibrated value 5
-    (tools/calibrate_window_length.py). Any run that uses a different value
+    ``comparison_late_window_points`` defaults to the calibrated value of 5
+    sampling points (see ``_handle_result``). Any run that uses a different value
     must record that value in the CSV ``late_window_points`` column.
     """
 
@@ -2686,12 +2686,11 @@ def _handle_result(
 ) -> None:
     """Helper to process and save result.
 
-    ``late_window_points`` default 5 is the calibrated tail-window length
-    (see tools/calibrate_window_length.py): growing the trailing window until
-    the running mean stops changing by more than 5% converges at a median of
-    5 sampling points (median raw span ~1000 steps) across representative
-    traces. Hard-coded after 2026-08-06 calibration; do not change without
-    re-running the calibration probe.
+    ``late_window_points`` default 5 is the calibrated tail-window length:
+    growing the trailing window until the running mean stops changing by
+    more than 5% converges at a median of 5 sampling points (median raw span
+    ~1000 steps) across representative traces. The value is fixed; the
+    calibration script is not part of this repository.
     """
     if result:
         enriched = dict(result)

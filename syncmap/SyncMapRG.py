@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-SyncMapX_RG: Minimal Recursive Hebbian Tokenization engine (rg algorithm).
+SyncMapX_RG: Recursive Grouping (RG) engine for the ``rg`` algorithm.
 ----------------------------------------------------------------------------------
-Independent engine for the ``rg`` algorithm (distinct from ``rg`` / SyncMapRG.py).
 Core dynamics:
-- Primitive contrastive force: co-activation attraction + inverse-square repulsion.
-- Secondary: graph spring (k_attr) + local obstacle (k_repulse).
+- Primary: primitive contrastive force (co-activation attraction toward the
+  active centroid + 1/r repulsion of inactive points from it).
+- Secondary: relation-graph spring (k_attr) + local obstacle (k_repulse).
+- Bounded macro feedback, on by default: macro-centroid repulsion
+  (k_macro_repulse = 0.1, step capped by macro_centroid_max_step_ratio) and
+  graph-spring attraction across macro tokens scaled by
+  macro_cross_attr_scale = 0.001.
 - RG recursion with stable-token / macro-token readout (physical_mst_gaps / dbscan).
-All geometric patch forces (entity_boundary, sibling, line_obstacle, macro_centroid)
-are intentionally absent from this engine.
+The other geometric patch forces (entity_boundary, sibling, line_obstacle) exist
+as parameters but are off by default.
 """
 from __future__ import annotations
 
@@ -228,11 +232,13 @@ class SyncMapX_RG:
         'dbscan_readout_min_samples': None,
         'rg_upper_input_active_gain': 1.0,
         'rg_upper_input_mass_gain': 0.5,
-        # rg is a transition-based engine: its graph spring reads the
-        # prev->curr transition operator. On single-active-token streams (which
-        # the real benchmarks are) the same-step coactivation operator is blind,
-        # so default the base level to transition rather than inheriting NS's
-        # coactivation default. Paths that pass stats_mode explicitly are unaffected.
+        # rg is a transition-based engine: its graph spring reads consecutive-step
+        # transition statistics, symmetrised (a step between i and j adds to both
+        # C_ij and C_ji, so the relation is undirected). On single-active-token
+        # streams (which the real benchmarks are) the same-step coactivation
+        # operator is blind, so default the base level to transition rather than
+        # inheriting NS's coactivation default. Paths that pass stats_mode
+        # explicitly are unaffected.
         'stats_mode': 'transition',
         'rg_upper_stats_mode': 'transition',
         # Upper-level macro edge weight source. 'transition' = the upper level's own
@@ -294,7 +300,7 @@ class SyncMapX_RG:
         if 'space_size' in kwargs:
             shared_space_kwargs['space_size'] = kwargs['space_size']
 
-        # RG核心设计：每个层级遵循相同的动力学，只是尺度不同（×scale_factor）
+        # Core RG design: every level follows the same dynamics, only at a different scale (× scale_factor).
         self.rg_scale_factor = float(kwargs.get('rg_scale_factor', 3.16))
         self.stats_memory_scale = max(1.0, float(kwargs.get('stats_memory_scale', 10.0)))
         self.stable_token_evidence_enabled = False
@@ -527,13 +533,13 @@ class SyncMapX_RG:
         self.significant_distance: float = 0.0
         self.macro_token_count: int = 0
 
-        # 注意：某些参数（centering_strength, max_step_norm等）已经在 _build_level_kwargs 中
-        # 按 scale_factor 缩放过了。需要防止 update_params 用通用版本覆盖它们。
+        # Note: some parameters (centering_strength, max_step_norm, ...) are already
+        # scaled by scale_factor in _build_level_kwargs; update_params must not overwrite them with the generic values.
         
-        # 需要被保护的参数（已被缩放）
+        # Parameters to protect (already scaled).
         scaled_params = {'centering_strength', 'max_step_norm', 'dbscan_eps', 'graph_r0_rel', 'graph_r0_fixed'}
         
-        # 过滤掉已缩放参数与所有 level-specific 覆盖，RG 只接受统一基准参数。
+        # Drop the already-scaled parameters; RG accepts only one shared base parameter set (no level-specific overrides).
         filtered_kwargs = {k: v for k, v in kwargs.items() if k not in scaled_params}
         
         if filtered_kwargs:
@@ -626,17 +632,17 @@ class SyncMapX_RG:
         level: str | int = 'l0',
         scale_factor: float = 1.0,
     ) -> dict[str, Any]:
-        """构建层级参数：共享同一动力学，只对允许的尺度参数做统一缩放。"""
+        """Build per-level parameters: the same dynamics at every level, with only the allowed scale parameters scaled uniformly."""
         level_index = SyncMapX_RG._normalize_level_index(level)
         ns_defaults = SyncMapNS.default_params()
         rg_defaults = SyncMapX_RG.default_params()
         result: dict[str, Any] = {}
 
-        # === 基础参数 ===
+        # === Base parameters ===
         result['adaptation_rate'] = float(kwargs.get('adaptation_rate', rg_defaults['adaptation_rate']))
         result['record_trajectory'] = bool(kwargs.get('record_trajectory', False)) if level_index == 0 else False
 
-        # === 聚类和嵌入参数 ===
+        # === Clustering and embedding parameters ===
         result['embed_cluster_method'] = str(kwargs.get('embed_cluster_method', ns_defaults['embed_cluster_method']))
         time_scale_mode = str(kwargs.get('rg_time_scale_mode', rg_defaults['rg_time_scale_mode'])).strip().lower()
         time_scale_growth = float(kwargs.get('rg_time_scale_growth', rg_defaults['rg_time_scale_growth']))
@@ -669,7 +675,7 @@ class SyncMapX_RG:
         )
         readout_slack = max(float(kwargs.get('dbscan_readout_slack', rg_defaults['dbscan_readout_slack'])), 1e-6)
 
-        # DBSCAN 参数：优先按层级距离律给出锚点，并允许在运行时用当前图实际形成的局部距离自适应修正。
+        # DBSCAN parameters: anchor eps on the per-level distance law, and let it adapt at run time to the local distances the current graph actually forms.
         raw_dbscan_eps = kwargs.get('dbscan_eps', rg_defaults['dbscan_eps'])
         if dbscan_eps_scale_mode in {'geometric_midpoint', 'measured_midpoint'}:
             midpoint_gain = np.sqrt(max(time_scale_growth, 1.0))
@@ -724,17 +730,17 @@ class SyncMapX_RG:
             None if clustering_random_state is None else int(clustering_random_state)
         )
 
-        # === 力学参数 ===
+        # === Force parameters ===
         k_pulse_base = float(kwargs.get('k_pulse', rg_defaults['k_pulse']))
         result['k_pulse'] = k_pulse_base
         
-        # k_attr（弹簧刚度）在各层保持同形同参。
-        # 层级差异只通过自然距离 graph_r0_fixed = base_r0 * scale_factor^level 体现，
-        # 不再额外把高层弹簧软化。这样 L1/L2/L3 的力学形式完全一致。
+        # k_attr (spring stiffness) has the same form and value at every level.
+        # Levels differ only through the natural distance graph_r0_fixed = base_r0 * scale_factor^level;
+        # upper-level springs are not softened further, so L1/L2/L3 use exactly the same force law.
         k_attr_base = float(kwargs.get('k_attr', rg_defaults['k_attr']))
         result['k_attr'] = k_attr_base
         
-        # === 图spring参数 ===
+        # === Graph spring parameters ===
         result['graph_spring_mode'] = str(kwargs.get('graph_spring_mode', rg_defaults['graph_spring_mode']))
         result['graph_degree_normalize'] = bool(kwargs.get('graph_degree_normalize', ns_defaults['graph_degree_normalize']))
         result['graph_weight_confidence_enabled'] = bool(
@@ -806,9 +812,9 @@ class SyncMapX_RG:
         result['graph_r0_mode'] = str(kwargs.get('graph_r0_mode', ns_defaults['graph_r0_mode']))
         result['pulse_mode'] = str(kwargs.get('pulse_mode', rg_defaults['pulse_mode']))
         
-        # graph_r0_rel: RG缩放时需要调整以维持合适的距离
+        # graph_r0_rel: adjusted under RG scaling to keep a suitable distance.
         # graph_r0 = graph_r0_rel * median(nearest_neighbor_distances)
-        # L1中，邻近距离会自动扩大（因为L1节点间隔更远），所以我们缩放graph_r0_rel
+        # On L1 the neighbour distances grow automatically (L1 nodes are farther apart), so graph_r0_rel is scaled (except in 'fixed' r0 mode).
         base_graph_r0_rel = float(kwargs.get('graph_r0_rel', rg_defaults['graph_r0_rel']))
         if result['graph_r0_mode'] == 'fixed':
             result['graph_r0_rel'] = base_graph_r0_rel
@@ -817,10 +823,10 @@ class SyncMapX_RG:
         base_graph_r0_fixed = float(kwargs.get('graph_r0_fixed', kwargs.get('graph_r0_abs', kwargs.get('graph_r0', rg_defaults['graph_r0_fixed']))))
         result['graph_r0_fixed'] = base_graph_r0_fixed * scale_factor
 
-        # === 距离维持参数（RG核心）===
-        # inter_cluster_distance_ratio：簇间距离与簇内距离的比例
+        # === Distance-keeping parameters (RG core) ===
+        # inter_cluster_distance_ratio: ratio of between-cluster to within-cluster distance.
         base_distance_ratio = float(kwargs.get('inter_cluster_distance_ratio', kwargs.get('rg_scale_factor', rg_defaults['inter_cluster_distance_ratio'])))
-        result['inter_cluster_distance_ratio'] = base_distance_ratio  # 比例本身不缩放
+        result['inter_cluster_distance_ratio'] = base_distance_ratio  # the ratio itself is not scaled
 
         result['center_on_origin'] = bool(kwargs.get('center_on_origin', ns_defaults['center_on_origin']))
         result['recenter_graph_support_only'] = bool(kwargs.get('recenter_graph_support_only', level_index > 0))
@@ -948,7 +954,7 @@ class SyncMapX_RG:
         result['edge_detach_distance'] = float(kwargs.get('edge_detach_distance', ns_defaults['edge_detach_distance']))
         result['edge_detach_distance_rel'] = float(kwargs.get('edge_detach_distance_rel', ns_defaults['edge_detach_distance_rel']))
         
-        # === 可塑性参数 ===
+        # === Plasticity parameters ===
         base_stats_memory_steps = int(kwargs.get('stats_memory_steps', ns_defaults['stats_memory_steps']))
         stats_memory_scale = max(1.0, float(kwargs.get('stats_memory_scale', rg_defaults['stats_memory_scale'])))
         if level_index > 0:
@@ -964,7 +970,7 @@ class SyncMapX_RG:
         result['stats_power_gain'] = float(kwargs.get('stats_power_gain', ns_defaults['stats_power_gain']))
         result['weighted_stats_input'] = bool(kwargs.get('weighted_stats_input', level_index > 0))
 
-        # === 步长限制（尺度参数） ===
+        # === Step-size limits (scale parameters) ===
         result['max_step_norm'] = float(kwargs.get('max_step_norm', rg_defaults['max_step_norm'])) * scale_factor
 
         return result
@@ -3251,8 +3257,8 @@ class SyncMapX_RG:
         return clipped
 
     def _level0_cluster_target_distance(self) -> float:
-        # 兼容旧诊断入口：第一层 coarse 的目标距离现在直接等于该层自身的平衡距离，
-        # 不再由 L0 额外乘一遍 inter_cluster_distance_ratio 推出来。
+        # Kept for old diagnostics: the first coarse level's target distance now equals that level's own equilibrium distance,
+        # instead of being derived from L0 by multiplying by inter_cluster_distance_ratio again.
         return self._level_equilibrium_distance(1)
 
     def _apply_cluster_force_to_level0(
@@ -3479,9 +3485,9 @@ class SyncMapX_RG:
         use_cluster_mass: bool = True,
         mass_power: float = 1.0,
     ) -> None:
-        """对Level1应用簇间距离维持力。
+        """Apply the between-cluster distance-keeping force on Level 1.
         
-        这是RG设计的关键部分：确保L1上的聚类簇之间维持正确的距离。
+        A key part of the RG design: keeps the clusters on L1 at the right distance from each other.
         """
         self._apply_cluster_force_to_upper_level(
             0,

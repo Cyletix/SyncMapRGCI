@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RG: Recursive Grouping</title>
+<meta name="description" content="RG, hierarchical chunking in one self-organizing map: mechanism, evaluation protocol and results on synthetic graph-walk sequences.">
+<style>
+:root {
+  --bg: #0d0f14; --surface: #161a26; --surface-2: #1c2130; --line: #2f3a56;
+  --ink: #f2f2f2; --ink-2: #b0b5c7; --ink-3: #7d849a;
+  --rg: #3987e5; --nsgd: #d95926; --syncmap: #199e70; --symmetric: #c98500; --tsf: #d55181; --violet: #9085e9; --red: #e66767;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --mono: "Cascadia Code", "Consolas", "SFMono-Regular", Menlo, monospace;
+  --serif: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+body { overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: center center; }
+section.slide { position: absolute; inset: 0; display: none; flex-direction: column; padding: 46px 64px 54px; background: var(--bg); overflow: hidden; }
+section.slide.active { display: flex; }
+.kicker { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+h1 { font-size: 54px; line-height: 1.08; margin: 0 0 18px; font-weight: 700; }
+h2 { font-size: 34px; line-height: 1.15; margin: 0 0 20px; font-weight: 650; }
+h3 { font-size: 21px; margin: 0 0 10px; color: var(--ink); }
+p, li { font-size: 22px; line-height: 1.42; color: var(--ink); }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 12px; padding-left: 26px; }
+li { margin-bottom: 8px; }
+li::marker { color: var(--ink-3); }
+.muted { color: var(--ink-2); }
+.small, .small li, .small p { font-size: 17px; }
+.tiny { font-size: 14px; color: var(--ink-3); }
+.body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; flex: 1; min-height: 0; }
+.cols.w60 { grid-template-columns: 1.5fr 1fr; }
+.cols.w40 { grid-template-columns: 1fr 1.5fr; }
+.fig { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.fig img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.caption { font-size: 15px; color: var(--ink-2); margin-top: 8px; text-align: center; }
+.take { margin-top: 12px; padding: 12px 18px; border-left: 4px solid var(--rg); background: var(--surface); border-radius: 0 8px 8px 0; font-size: 19px; line-height: 1.4; }
+.take.warn { border-left-color: var(--red); }
+.take.ok { border-left-color: var(--syncmap); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; }
+.card h3 { margin-top: 0; }
+.math { font-family: var(--serif); font-size: 26px; text-align: center; margin: 12px 0 18px; color: var(--ink); }
+.math i { font-style: italic; }
+.math.left { text-align: left; }
+code, .code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; color: #d6d9e4; }
+pre { font-family: var(--mono); font-size: 14.5px; line-height: 1.45; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin: 0 0 12px; white-space: pre-wrap; color: #d6d9e4; }
+table { border-collapse: collapse; width: 100%; font-size: 17px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { color: var(--ink-2); font-weight: 600; font-size: 15px; }
+th:first-child, td:first-child { text-align: left; }
+td.l, th.l { text-align: left; white-space: normal; }
+td b { color: var(--ink); }
+tr.hl td { background: rgba(57,135,229,.08); }
+.best { font-weight: 700; color: var(--ink); }
+.dim { color: var(--ink-3); }
+.sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+.tag { display: inline-block; font-size: 13px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); margin-right: 6px; }
+.footer { position: absolute; left: 64px; right: 64px; bottom: 18px; display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-3); }
+.title-slide { justify-content: center; }
+.title-slide .sub { font-size: 26px; color: var(--ink-2); margin-bottom: 36px; }
+.section-slide { justify-content: center; }
+.section-slide h1 { font-size: 60px; }
+.section-slide .num { font-size: 20px; color: var(--rg); letter-spacing: .1em; margin-bottom: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+aside.notes { display: none; }
+#notes { position: fixed; left: 0; right: 0; bottom: 0; max-height: 34vh; overflow: auto; background: rgba(22,26,38,.97); border-top: 1px solid var(--line); padding: 14px 28px; font-size: 16px; line-height: 1.5; color: var(--ink); display: none; z-index: 5; }
+#notes.on { display: block; }
+#notes h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+#hud { position: fixed; right: 14px; top: 10px; display: flex; gap: 6px; z-index: 6; opacity: 0; transition: opacity .3s; }
+#hud.show, #hud:hover { opacity: 1; }
+#hud button { background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font: 13px var(--sans); cursor: pointer; }
+@media print {
+  @page { size: 1280px 720px; margin: 0; }
+  html, body { overflow: visible; height: auto; background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #stage { position: static; transform: none !important; width: 1280px; height: auto; }
+  section.slide { position: relative; display: flex !important; width: 1280px; height: 720px; page-break-after: always; break-after: page; }
+  #notes, #hud { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- ============================================================ 0. Opening -->
+<section class="slide title-slide" data-section="Opening">
+  <div class="kicker">SyncMapRGCI · research presentation</div>
+  <h1>RG: Recursive Grouping</h1>
+  <div class="sub">Hierarchical chunking inside one self-organizing map —<br>from SyncMap to recursive multi-scale dynamics</div>
+  <p class="muted small">Laboratory of Intelligent Systems, Kyushu University · October 2026<br>Code, data and every result in this deck: <code>github.com/Cyletix/SyncMapRGCI</code></p>
+  <aside class="notes">This talk answers three questions. What exactly changed relative to the original SyncMap? How does information move between scales in RG? And what do controlled experiments say about where RG helps, where it does not, and what it costs? Every number shown comes from the public repository and can be reproduced with the commands in the appendix.</aside>
+</section>
+
+<section class="slide" data-section="Opening">
+  <div class="kicker">In one sentence</div>
+  <h2>The same self-organizing kernel, run again on the tokens it produces</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/f01_cover_architecture.png" alt="Left: original SyncMap organizes symbols in one geometric space and reads them out with DBSCAN. Right: RG turns stable groups into tokens and relearns them at a larger natural scale, giving levels L0, L1, L2."></div>
+    <div>
+      <ul class="small">
+        <li><b>SyncMap</b> organizes symbols in one space; DBSCAN reads clusters afterwards.</li>
+        <li><b>RG</b> turns stable groups into tokens and feeds them to the same kernel one level up, at a 3.16× larger scale and slower clock.</li>
+        <li>Lower levels make unsupervised tokens; upper levels learn slower, coarser relations.</li>
+        <li>Scores still come from one common readout of the level-0 map, so RG gets no evaluation shortcut.</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">RG is not "SyncMap followed by a hierarchical clustering step". The coarse-grained tokens become a new input sequence, so higher levels have their own relation statistics and their own dynamics. At the same time the evaluation never reads RG's internal tokens as the answer: all five models are scored by the same reader applied to their final level-0 coordinates.</aside>
+</section>
+
+<section class="slide" data-section="Opening">
+  <div class="kicker">Roadmap</div>
+  <h2>What this talk covers</h2>
+  <div class="grid3" style="margin-top:6px">
+    <div class="card"><h3>1 · Problem</h3><p class="small">Unsupervised chunking of a symbol stream; why nested and transitive chunks are hard for one geometry.</p></div>
+    <div class="card"><h3>2 · Mechanism</h3><p class="small">From SyncMap to NSGD, the NS kernel and RG: relation graph, forces, tokenization, scales, feedback, readout.</p></div>
+    <div class="card"><h3>3 · Protocol</h3><p class="small">ARI vs NMI, the level-mean hierarchy score, the benchmark design, equal steps vs equal compute.</p></div>
+    <div class="card"><h3>4 · Benchmark</h3><p class="small">8 scenarios × 5 models × 5 seeds at 100k steps, with 3-D maps and per-level scores.</p></div>
+    <div class="card"><h3>5 · Targeted experiments</h3><p class="small">Community-orientation sweep, harder hierarchies, and RG with recursion switched off.</p></div>
+    <div class="card"><h3>6 · Conclusions</h3><p class="small">What the evidence supports, known limitations, and the road to causal inference.</p></div>
+  </div>
+  <aside class="notes">The order follows the logic of the work: first the problem, then the mechanism piece by piece, then how we score, then results. The fifth part is new: targeted experiments designed after the benchmark showed that its hierarchy graphs were too easy at the coarse level.</aside>
+</section>
+
+<!-- ============================================================ 1. Problem -->
+<section class="slide section-slide" data-section="Problem">
+  <div class="num">PART 1</div>
+  <h1>The problem</h1>
+  <p class="muted">Find the chunks hidden in a symbol stream — and the chunks of chunks — without labels.</p>
+</section>
+
+<section class="slide" data-section="Problem">
+  <div class="kicker">Task</div>
+  <h2>Recover hidden chunks, and their nesting, from a random walk</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/hero_rg_DCH1.png" alt="Left: hidden structure of DCH1, 18 symbols in 6 chunks and 2 groups. Right: RG's map after 100,000 steps; the two groups are far apart and each splits into its chunks."></div>
+  <p class="small muted" style="margin-top:8px">A random walk over a <code>.dot</code> graph emits one symbol at a time. Each model sees only that stream and must place symbols so that true chunks (flat) or every nested level (hierarchy) come out as clusters. Labels are used only for scoring.</p>
+  <aside class="notes">This is the whole task in one picture. On the left is the generator, DCH1: 18 symbols, 6 chunks of three, and 2 groups of three chunks. The walk mostly stays inside a chunk, sometimes moves to a sibling chunk, and rarely crosses to the other group. On the right is RG's learned map after 100,000 steps from the stream alone: the two groups are far apart, and inside each group the chunks form smaller clusters.</aside>
+</section>
+
+<section class="slide" data-section="Problem">
+  <div class="kicker">Starting point</div>
+  <h2>Original SyncMap: co-active symbols contract, then DBSCAN reads clusters</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/f02_original_syncmap.png" alt="Paper dynamics: active symbols move toward a positive centre, inactive ones toward a negative centre; afterwards DBSCAN groups dense points into clusters."></div>
+    <div>
+      <ol class="small">
+        <li>Every symbol is a point in a Euclidean space.</li>
+        <li>The positive set <i>PS<sub>t</sub></i> (recently active) contracts to its centre <i>c<sub>p</sub></i>.</li>
+        <li>The negative set <i>NS<sub>t</sub></i> contracts to <i>c<sub>n</sub></i>.</li>
+        <li>After training, DBSCAN turns coordinates into a partition: points connected by dense neighbourhoods share an ID; isolated points may be noise (−1).</li>
+      </ol>
+      <p class="tiny">Vargas &amp; Asabuki, AAAI 2021. The repository's <code>syncmap</code> baseline ports the reference release with a constant learning rate.</p>
+    </div>
+  </div>
+  <aside class="notes">This is the version the audience already knows. Training only moves points; the discrete partition comes afterwards from DBSCAN, which needs no labels. RG keeps this split between dynamics and readout, but changes almost everything on the dynamics side.</aside>
+</section>
+
+<section class="slide" data-section="Problem">
+  <div class="kicker">Why it is hard</div>
+  <h2>Two hard cases: transitive chunks and nested levels</h2>
+  <div class="fig"><img src="figures/f03_transition_heatmaps.png" alt="Transition-probability heatmaps. Left, chain_mixed5_6: some chunks are long chains with sparse one-step evidence. Right, DCH1: blocks for six chunks inside two larger groups."></div>
+  <p class="small muted" style="margin-top:6px">Both maps are the real <i>P</i>(next | current) of the DOT files; the lines are the true boundaries, drawn only for the viewer.</p>
+  <aside class="notes">Left: in chain_mixed5_6 some chunks are dense cliques but others are paths. In a path chunk, two members far apart in the chain never co-occur in one step; their membership only follows from multi-step reachability. Right: in DCH1 the same leaf transitions carry two scales at once, chunks of three inside groups of nine. A single distance scale has to represent both a small within-chunk spacing and a large between-group spacing.</aside>
+</section>
+
+<section class="slide" data-section="Problem">
+  <div class="kicker">Motivation</div>
+  <h2>One geometry, one scale: what goes wrong on a hierarchy</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/latent_DCH1.png" alt="Final 3-D maps of five models on DCH1, coloured by true chunk. RG shows two far-apart groups each split into chunks; TSFMap spreads chunks evenly; SyncMap, Symmetric and NSGD collapse each group."></div>
+  <div class="cols" style="flex:0 0 auto; margin-top:8px">
+    <p class="small">TSFMap spreads the six chunks evenly over its normalised sphere: the fine level is perfect (L1 ARI 0.97), but the two groups are not separated (L2 0.42).</p>
+    <p class="small">SyncMap, Symmetric and NSGD do the opposite: two far-apart blobs (L2 = 1.00) with the chunks inside merged (L1 0.26–0.33). RG keeps both (L1 0.59, L2 1.00).</p>
+  </div>
+  <aside class="notes">These are the models' own 3-D coordinates, not a projection, after 100,000 steps on seed 0. The failure mode is visible only in 3-D: TSFMap normalises every step, so its chunks end up evenly spaced on a sphere with no group-level structure. The other single-geometry models show the opposite trade-off. Per-level numbers are five-seed means from the benchmark. RG's design goal is exactly to hold two well-separated scales at once.</aside>
+</section>
+
+<!-- ============================================================ 2. Mechanism -->
+<section class="slide section-slide" data-section="Mechanism">
+  <div class="num">PART 2</div>
+  <h1>From SyncMap to RG</h1>
+  <p class="muted">Lineage, the level kernel, and the five changes that make recursion work.</p>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Lineage</div>
+  <h2>After Early NS the work split into two branches</h2>
+  <div class="fig"><img src="figures/f04_lineage.png" alt="Original SyncMap leads to Early NS; Early NS branches into NSGD (first-order plus plasticity and active pulse) and the rewritten SyncMapNS kernel, on which RG is built."></div>
+  <aside class="notes">RG did not start from scratch. Early NS tried a second-order spring-mass system with an explicit relation graph to fix SyncMap's mutual locking, instability on small graphs and lack of relation memory. Inertia caused overshoot and the system kept accumulating patches. Two branches followed: NSGD, a first-order system with plasticity and an active pulse, and the current SyncMapNS, a rewritten kernel designed to be reused at every level of RG. They share the lessons of Early NS, not a class or a parameter preset, so this is not a serial version chain.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Prerequisite</div>
+  <h2>NSGD: make the dynamics first-order before making them hierarchical</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Early NS · second order</h3>
+      <div class="math"><i>m</i> <i>v̇</i> = <i>F</i> − <i>γ v</i>,&nbsp;&nbsp; <i>ẋ</i> = <i>v</i></div>
+      <ul class="small"><li>position + velocity + damping</li><li>inertia → overshoot and ringing</li><li>patches added on top of the relation springs</li></ul>
+    </div>
+    <div class="card">
+      <h3>NSGD · first order</h3>
+      <div class="math">Δ<i>x</i> = <i>η</i> · <i>P</i> · <i>F</i></div>
+      <ul class="small"><li>positions move directly along the net force</li><li>no velocity, no inertia</li><li>online relation graph, plasticity <i>P</i> and an active pulse</li></ul>
+    </div>
+  </div>
+  <div class="take">This step fixed the optimiser skeleton, not the hierarchy. NSGD is kept as a strong baseline in every experiment.</div>
+  <aside class="notes">NSGD keeps an online relation graph and moves positions directly; plasticity and the active-centre pulse are its adaptation mechanisms. It should not be read as having a convergence guarantee: the relation graph itself changes over time.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Level kernel</div>
+  <h2>SyncMapNS: one reusable level; RG adds recursion outside it</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/f05_ns_kernel_and_rg.png" alt="Shared Early NS lessons feed SyncMapNS, one reusable level (transition statistics, weighted graph and primitive contrast, canonical spring, coordinate update), which SyncMapRG orchestrates across levels."></div>
+    <ul class="small">
+      <li>Shared with NSGD: first-order updates, coordinates driven by an online relation graph.</li>
+      <li>Rewritten: transition statistics, a bidirectional spring with a rest length, degree normalisation.</li>
+      <li>RG's kernel switches off NSGD's plasticity and pulse and keeps the primitive force and the relation spring.</li>
+      <li>Token extraction, coarse-graining and the multi-level schedule live in <code>SyncMapRG</code>, not in the kernel.</li>
+    </ul>
+  </div>
+  <aside class="notes">SyncMapNS is not an alias, subclass or preset of NSGD; they are independent runtimes. What matters for hierarchy is the interface: every level runs the same dynamics and levels differ only in spatial scale and in the time window of their evidence. Later we switch recursion off to see what the outer RG layer contributes on its own.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Input</div>
+  <h2>One random walk feeds two signals: an immediate force and a relation memory</h2>
+  <div class="fig"><img src="figures/f06_graphwalk_observation.png" alt="GraphWalk state becomes an observation made of the current state plus a decaying tail of the previous one; it drives the primitive force directly and, after thresholding, the transition tracker."></div>
+  <aside class="notes">The environment holds each state for about eleven input steps, time_delay = 10, and emits the current state together with an exponentially decaying tail of the previous one. So around a switch from A to B the frames look like {A}, {A, B}, {B}. That overlap is the only place where transition evidence lives. The primitive force reads the observation directly. The tracker thresholds it at 0.1 into an active set and pairs consecutive active sets. The original SyncMap has no relation buffer at all; it relies on the same previous-state tail.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Change 1</div>
+  <h2>Adjacent observations become a persistent, undirected relation graph</h2>
+  <div class="fig"><img src="figures/f07_relation_graph.png" alt="A toy stream of active sets is paired step to step into a symmetric decayed count matrix; similarity C over the square root of n_i n_j, then power, top-k and threshold, gives a sparse weighted graph."></div>
+  <p class="small muted" style="margin-top:6px">Counts decay with memory <i>M</i> = 300 observations; every <i>T</i><sub>push</sub> = 100 steps the strongest neighbours (top-<i>k</i> = 12, above threshold) become spring edges.</p>
+  <aside class="notes">RG does not use the benchmark's true edges. It remembers which symbols keep appearing in consecutive thresholded observations. Self pairs are skipped, pairs are written symmetrically, so the graph is undirected and carries no causal direction. Similarity is the decayed pair count divided by the geometric mean of the two symbols' decayed activity, a cosine-style normalisation shared with NSGD. Cost note: the tracker keeps a dense N-by-N table, so doubling the symbols roughly quadruples this part of the work; top-k only sparsifies the final edges.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Change 2</div>
+  <h2>Keep SyncMap's contrastive force, made explicit and bounded</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/f08_primitive_force.png" alt="Active points contract toward their weighted centre; inactive points are pushed radially away from the same centre, with a push that falls off as one over the distance."></div>
+    <div>
+      <p class="small">For the current active set <i>P<sub>t</sub></i> with weighted centre <i>c<sub>t</sub></i>:</p>
+      <div class="math left" style="font-size:21px"><i>F</i><sub><i>i</i></sub><sup>+</sup> = <i>a</i> (<i>c<sub>t</sub></i> − <i>z<sub>i</sub></i>) / max(‖<i>c<sub>t</sub></i> − <i>z<sub>i</sub></i>‖, <i>d</i><sub>min</sub>),&nbsp; <i>i</i> ∈ <i>P<sub>t</sub></i></div>
+      <div class="math left" style="font-size:21px"><i>F</i><sub><i>j</i></sub><sup>−</sup> = <i>b r</i><sub>0</sub> (<i>z<sub>j</sub></i> − <i>c<sub>t</sub></i>) / max(‖<i>z<sub>j</sub></i> − <i>c<sub>t</sub></i>‖, <i>d</i><sub>min</sub>)<sup>2</sup>,&nbsp; <i>j</i> ∉ <i>P<sub>t</sub></i></div>
+      <p class="small muted"><i>a</i> = 0.5, <i>b</i> = 2.0. The push falls off as 1/distance (a vector divided by the squared distance); a distance floor and a per-step cap keep it bounded. Label-free, read straight from the input.</p>
+    </div>
+  </div>
+  <aside class="notes">This is SyncMap's original idea in a cleaner form: active points move toward their common centre, inactive points move away from it with a push that falls off as one over the distance. It does not go through the relation graph and never uses labels. It works together with the relation spring; the experiments here do not separate the two forces' individual contributions.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Change 3</div>
+  <h2>A relation edge has a preferred length — it does not only pull</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/f09_spring_curve.png" alt="Normalised radial factor of one spring edge against normalised distance: strong repulsion below the rest length, zero at the rest length, attraction beyond it."></div>
+    <ul class="small">
+      <li>Every edge has a target distance <i>r<sub>L</sub></i> (the level's natural length).</li>
+      <li>Too far → attraction; too close → strongly non-linear repulsion.</li>
+      <li>The same normalised curve is reused at every level; edge weight and node degree only scale its strength.</li>
+      <li><i>k</i><sub>attr</sub> = 0.07 keeps the spring a secondary force.</li>
+    </ul>
+  </div>
+  <aside class="notes">This canonical spring is zero exactly at the rest length, pushes hard when compressed and pulls back when stretched, so relation edges cannot squeeze all points into one spot, which was SyncMap's mutual-locking problem. The plot is the normalised factor for one ordinary edge, not the net displacement after weights, degree normalisation, cross-macro attenuation, other forces, learning rate and clipping. The spring constant 0.07 is a working point, not a swept optimum.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Two separations</div>
+  <h2>Two ways points are pushed apart: per observation, and per macro group</h2>
+  <div class="fig"><img src="figures/f10_two_separations.png" alt="Left: an active pair contracts while an inactive point is pushed from their centre. Right: two macro groups closer than the target gap are translated apart as wholes, with arrows anchored at the centroids."></div>
+  <aside class="notes">Left: only the primitive contrastive component. The two active points move toward their weighted centre, so they approach each other; the grey inactive point is pushed along inactive-minus-centre. This component does not push back on the active points. The full micro force also contains the spring and a local obstacle term that does act on active endpoints. Right: the macro boundary, which needs the tokenization introduced later. When the nearest members of two macro groups are closer than the target spacing, the same bounded shift is applied to every member, so the arrows start at the centroids; the gauge below shows the nearest-point gap that triggers it.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Level 0</div>
+  <h2>The level-0 update: sum the micro forces, clip, step</h2>
+  <div class="math" style="font-size:30px;margin-top:22px">Δ<i>Z</i><sub>micro</sub> = <i>η</i> · clip( <span style="color:var(--rg)"><i>F</i><sub>primitive</sub></span> + <span style="color:var(--violet)"><i>F</i><sub>spring</sub></span> + <span style="color:var(--nsgd)"><i>F</i><sub>obstacle</sub></span> )</div>
+  <div class="grid3" style="margin-top:10px">
+    <div class="card"><h3 style="color:var(--rg)">primitive</h3><p class="small">immediate contrast from the current observation</p></div>
+    <div class="card"><h3 style="color:var(--violet)">spring</h3><p class="small">relation-graph edges with rest length <i>r<sub>L</sub></i></p></div>
+    <div class="card"><h3 style="color:var(--nsgd)">obstacle</h3><p class="small">endpoint-local radial repulsion, <i>k</i><sub>repulse</sub> = 1</p></div>
+  </div>
+  <ul class="small" style="margin-top:18px">
+    <li>First-order: no mass, no velocity. <i>η</i> = 0.05, net step capped at 2.0.</li>
+    <li>The macro group shift (later) is a separate bounded displacement, not part of this clip.</li>
+  </ul>
+  <aside class="notes">Before any upper-level feedback exists, this is the whole level-0 update: three force terms are added, clipped together, and multiplied by the learning rate. Geometric patch forces from earlier experiments, such as entity boundaries, sibling attraction or line obstacles, are switched off in the maintained configuration.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Change 4</div>
+  <h2>Tokenize, keep the membership, and keep learning one level up</h2>
+  <div class="fig"><img src="figures/f11_recursive_tokenization.png" alt="Three panels repeat the same L0 points: L1 circles mark coarse groups, L2 ellipses enclose groups of groups."></div>
+  <aside class="notes">The key is not to cluster once, but to keep the membership and turn each set into a new letter. Stable groups at level 0 become tokens; the token stream is the input of level 1, which runs the same kernel with its own coordinates and its own relation statistics, at a slower and coarser scale. The figure repeats the level-0 points only to show nesting; the real upper levels do not copy level-0 coordinates.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Scales</div>
+  <h2>Why the scale factor is 3.16</h2>
+  <div class="fig" style="flex:0 0 330px"><img src="figures/f12_scale_ladder.png" alt="Scale ladder: natural length 1, 3.16, 9.99, 31.55, 99.71 for levels 0 to 4, with memory 300 times ten to the level and graph push intervals 100, 316, 999, 3155, 9971."></div>
+  <ul class="small">
+    <li><i>r</i><sub>0</sub> = 1 is the normalised spring length at level 0, not a measured constant.</li>
+    <li>3.16 ≈ √10: a half-decade, log-even ladder 1 → 3.16 → 10 → 31.6 → 100.</li>
+    <li>3.16 &gt; 2 clears the straightened span of a two-hop chain of unit edges, leaving room for the coarse scale.</li>
+    <li>A motivated choice, not a theorem; no sweep shows it is the unique optimum.</li>
+  </ul>
+  <aside class="notes">The space ladder inserts one stable logarithmic step between decades, and the first coarse scale exceeds the span of a two-hop local chain. Relation memory grows ten-fold per level because higher levels must integrate slower evidence. Earlier write-ups called 3.16 an experimentally determined separation ratio; the evidence for that was too weak, so I no longer claim it.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Known limitation</div>
+  <h2>Level cadence: the default scheduler aliases deep clocks</h2>
+  <div class="fig"><img src="figures/f13_level_cadence.png" alt="Design target: level interfaces every 50, 158 and 499 raw steps. Default nested-modulo scheduler: first joint triggers at 50, 3,950 and about 1,971,050 steps."></div>
+  <aside class="notes">Higher levels should integrate longer windows, so the target interface cadence grows by 3.16 per level: 50, 158, 499 raw steps. A code audit found that the default scheduler checks every level against the same raw-step modulo, and a deeper level only gets the chance to check when the level below fires. The 158-step target therefore aliases to lcm(50, 158) = 3,950, and the next level to about two million. This is a confirmed scheduling flaw, not an inference from scores. An elapsed-time option exists but it also changes event counts, repeated force exposure and graph-rebuild phase, so it is not a clean A/B and is not validated. The release keeps the default and states the flaw. The practical consequence: within 100,000 steps, levels 2 and above receive very little evidence.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Change 5</div>
+  <h2>Macro feedback keeps coarse groups separable inside level 0</h2>
+  <div class="fig"><img src="figures/f14_macro_feedback.png" alt="Stable level-0 tokens give macro labels, which feed bounded level-0 feedback: cross-macro relation attraction is scaled down, and groups closer than the target gap are translated apart."></div>
+  <aside class="notes">This is the second separation mechanism. RG forms stable tokens and macro labels from its own geometry and statistics; they are not true labels. The feedback does two bounded things in level 0: the attractive part of springs that cross a macro boundary is scaled by 0.001, while their compressive repulsion is untouched; and when the nearest members of two macro groups come closer than the target spacing, both groups are translated apart as wholes. Upper-level coordinates are never broadcast down rigidly.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Readout</div>
+  <h2>From coordinates to partitions: one reader for every model</h2>
+  <div class="fig"><img src="figures/f15_readout.png" alt="Left: formal readout, final level-0 coordinates, DBSCAN for flat graphs and a Euclidean minimum spanning tree with gap cuts for hierarchies. Right: a candidate persistent-cut protocol that is not adopted."></div>
+  <aside class="notes">This step turns each model's continuous map into partitions that can be scored. Flat graphs use DBSCAN. Hierarchies use the final level-0 coordinates: build the Euclidean minimum spanning tree, sort its N minus 1 edges, and cut where the ratio between neighbouring edge lengths is at least 1.05, giving one cut per required level. It is a single-checkpoint rule; the supplementary runs therefore also average the last five checkpoints. The right side is a research candidate I have not adopted: compare the two edge-length regimes on each side of a cut, require a geometric margin and persistence over a late window, and keep several nested cuts. RG's internal tokens influence training but are never read as the answer.</aside>
+</section>
+
+<section class="slide" data-section="Mechanism">
+  <div class="kicker">Summary</div>
+  <h2>What actually changed relative to SyncMap</h2>
+  <table style="font-size:20px;margin-top:6px">
+    <tr><th class="l">Original SyncMap</th><th class="l">RG</th></tr>
+    <tr><td class="l">current positive / negative sets only</td><td class="l">plus a finite-memory relation graph from adjacent observations</td></tr>
+    <tr><td class="l">attraction toward set centres</td><td class="l">bounded contrastive force + rest-length spring + local obstacle</td></tr>
+    <tr><td class="l">a single distance scale</td><td class="l">natural length 3.16<sup><i>L</i></sup> per level</td></tr>
+    <tr><td class="l">one layer of coordinates</td><td class="l">tokens re-enter the same kernel: L0 / L1 / L2 …</td></tr>
+    <tr><td class="l">no feedback</td><td class="l">bounded macro feedback written back to L0</td></tr>
+  </table>
+  <div class="take">The biggest change is structural: relations become an explicit graph, scale becomes a level variable, and coarse-graining feeds back into the dynamics instead of stopping at post-processing.</div>
+  <aside class="notes">If the audience only knows the original SyncMap, these five rows are the shortest answer to "what did you change".</aside>
+</section>
+
+<!-- ============================================================ 3. Protocol -->
+<section class="slide section-slide" data-section="Protocol">
+  <div class="num">PART 3</div>
+  <h1>How we score</h1>
+  <p class="muted">Metrics, the hierarchy score, the benchmark, and what "equal" means.</p>
+</section>
+
+<section class="slide" data-section="Protocol">
+  <div class="kicker">Metric</div>
+  <h2>ARI checks the whole partition; NMI measures shared information</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/f16_ari_vs_nmi.png" alt="Three toy predictions for 24 symbols in 4 chunks: exact (ARI 1, NMI 1), each chunk split in two (ARI 0.51, NMI 0.80), pairs of chunks merged (ARI 0.47, NMI 0.67)."></div>
+    <ul class="small">
+      <li>NMI: how much information predicted and true labels share.</li>
+      <li>ARI: every pair of symbols, same-or-different cluster, corrected for chance. 1 = identical, ≈0 = random, can be negative.</li>
+      <li>Over-splitting keeps a lot of information, so NMI stays high while ARI drops.</li>
+      <li>All rankings use ARI; NMI is reported as a diagnostic.</li>
+    </ul>
+  </div>
+  <aside class="notes">The question here is whether the predicted partition really matches the target, not only whether it carries information about it. NMI is more forgiving of over-splitting, many clusters and noise handling, so we rank with ARI. All values on the left are computed directly with sklearn.</aside>
+</section>
+
+<section class="slide" data-section="Protocol">
+  <div class="kicker">Hierarchy score</div>
+  <h2>Hierarchies: average ARI over every required level</h2>
+  <div class="math" style="font-size:32px;margin:26px 0">ARI<sub>hier</sub> = <span style="font-size:1.1em">(</span>1/<i>D</i><span style="font-size:1.1em">)</span> Σ<sub><i>L</i>=1…<i>D</i></sub> ARI<sub><i>L</i></sub></div>
+  <ul>
+    <li>Every required level counts equally; a missing level scores 0.</li>
+    <li>Per-level ARI is always reported next to it, so the weakest level stays visible.</li>
+    <li>Level 1 is the finest; the top level of the benchmark graphs has only two groups.</li>
+  </ul>
+  <div class="take">An earlier "joint minimum" rule let the single worst cut decide the whole score and gave no credit for partial success; it is not used here.</div>
+  <aside class="notes">Which hierarchy metric to use depends on the ground truth. Here every graph has explicit labels for every level, so I score each level with ARI and average. A worst-level view is kept by reporting all levels. Tree-edit distance is not used because the output is a set of nested partitions, not a tree with comparable node semantics.</aside>
+</section>
+
+<section class="slide" data-section="Protocol">
+  <div class="kicker">Benchmark</div>
+  <h2>Eight scenarios, five models, five seeds, 100k steps</h2>
+  <div class="cols w60">
+    <table>
+      <tr><th class="l">Scenario</th><th>Family</th><th>States</th><th class="l">Classes (fine → coarse)</th></tr>
+      <tr><td class="l">fixed5_6</td><td>flat</td><td>30</td><td class="l">5</td></tr>
+      <tr><td class="l">UB_mixed_chunk_20_5_5</td><td>flat</td><td>30</td><td class="l">3 (sizes 20/5/5)</td></tr>
+      <tr><td class="l">imbalanced_fixed_300</td><td>flat</td><td>300</td><td class="l">14</td></tr>
+      <tr><td class="l">chain_mixed5_60</td><td>flat</td><td>300</td><td class="l">5</td></tr>
+      <tr><td class="l">DCH1</td><td>hierarchy</td><td>18</td><td class="l">6 / 2</td></tr>
+      <tr><td class="l">IH</td><td>hierarchy</td><td>18</td><td class="l">5 / 2</td></tr>
+      <tr><td class="l">EC</td><td>hierarchy</td><td>33</td><td class="l">15 / 2</td></tr>
+      <tr><td class="l">IEH</td><td>hierarchy</td><td>18</td><td class="l">7 / 5 / 4 / 2</td></tr>
+    </table>
+    <div>
+      <p class="small"><span class="sw" style="background:var(--syncmap)"></span>SyncMap &nbsp;<span class="sw" style="background:var(--symmetric)"></span>Symmetric &nbsp;<span class="sw" style="background:var(--tsf)"></span>TSFMap<br><span class="sw" style="background:var(--nsgd)"></span>NSGD &nbsp;<span class="sw" style="background:var(--rg)"></span>RG</p>
+      <ul class="small">
+        <li>Each model uses its maintained profile; baselines follow their papers (SyncMap and Symmetric with a constant learning rate).</li>
+        <li>Seeds 0–4; the same seed gives the same walk.</li>
+        <li>Representative cases: balanced, unbalanced, imbalanced and chain-like flat chunks; two- to four-level hierarchies.</li>
+        <li>Score: final-checkpoint ARI (hierarchy: level mean).</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">The benchmark is deliberately small and representative: four flat graphs covering balanced, unbalanced, imbalanced and transitive chunks, and four hierarchies with two to four levels. Everything runs through the public main.py; the exact command is in the appendix.</aside>
+</section>
+
+<section class="slide" data-section="Protocol">
+  <div class="kicker">Budget</div>
+  <h2>Equal steps are not equal compute</h2>
+  <div class="cols">
+    <div>
+      <ul class="small">
+        <li><b>Equal steps</b>: every model reads the same number of input states — this measures data efficiency.</li>
+        <li><b>Equal wall-clock</b>: every model gets the same seconds — this measures compute efficiency.</li>
+        <li>All results here are equal-step. They say nothing about equal wall-clock.</li>
+        <li>RG carries graph statistics, periodic clustering and extra levels each step.</li>
+      </ul>
+    </div>
+    <table>
+      <tr><th class="l">Mean s / run (100k)</th><th>SyncMap</th><th>NSGD</th><th>RG</th><th>RG / NSGD</th></tr>
+      <tr><td class="l">fixed5_6</td><td>3.1</td><td>4.5</td><td>18.6</td><td>4.1×</td></tr>
+      <tr><td class="l">chain_mixed5_60</td><td>4.5</td><td>9.3</td><td>27.7</td><td>3.0×</td></tr>
+      <tr><td class="l">imbalanced_fixed_300</td><td>4.8</td><td>8.8</td><td>31.6</td><td>3.6×</td></tr>
+      <tr><td class="l">DCH1</td><td>2.3</td><td>4.4</td><td>63.3</td><td>14×</td></tr>
+      <tr><td class="l">EC</td><td>2.7</td><td>5.2</td><td>89.2</td><td>17×</td></tr>
+      <tr><td class="l">IEH</td><td>2.2</td><td>4.6</td><td>64.5</td><td>14×</td></tr>
+    </table>
+  </div>
+  <div class="take warn">RG costs about 3–4× NSGD on flat graphs, where it runs one level, and 14–17× on hierarchies, where it runs 3–5 levels.</div>
+  <aside class="notes">This is the price of the recursion. On flat graphs RG runs only the level-0 kernel, so the overhead is the relation statistics and the force terms. On hierarchies it runs three to five solver levels plus the tokenization machinery. Any claim of superiority in this talk is per input step, not per second.</aside>
+</section>
+
+<!-- ============================================================ 4. Benchmark -->
+<section class="slide section-slide" data-section="Benchmark">
+  <div class="num">PART 4</div>
+  <h1>Benchmark results</h1>
+  <p class="muted">8 scenarios × 5 models × 5 seeds at 100,000 steps.</p>
+</section>
+
+<section class="slide" data-section="Benchmark">
+  <div class="kicker">Overview</div>
+  <h2>No single winner: RG leads on three scenarios, NSGD on three</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/comparison_ari.png" alt="Grouped bars of ARI, mean and standard deviation over 5 seeds, for five models on eight scenarios."></div>
+  <aside class="notes">RG has the best mean on imbalanced_fixed_300, DCH1 and EC, and is within 0.004 of the best on UB_mixed and IH. NSGD is best on fixed5_6, IH and IEH. SyncMap's best is chain_mixed5_60, where four models sit within one standard deviation of each other. The error bars matter: RG's seed variance is the largest on several scenarios, for example ±0.30 on UB_mixed.</aside>
+</section>
+
+<section class="slide" data-section="Benchmark">
+  <div class="kicker">Numbers</div>
+  <h2>ARI, mean ± sd over five seeds</h2>
+  <table style="font-size:17.5px">
+    <tr><th class="l">Scenario</th><th>SyncMap</th><th>Symmetric</th><th>TSFMap</th><th>NSGD</th><th>RG</th></tr>
+    <tr><td class="l">fixed5_6</td><td>0.516 ± 0.119</td><td>0.747 ± 0.141</td><td>0.788 ± 0.199</td><td class="best">1.000 ± 0.000</td><td>0.957 ± 0.033</td></tr>
+    <tr><td class="l">UB_mixed_chunk_20_5_5</td><td>0.253 ± 0.170</td><td class="best">0.594 ± 0.178</td><td>0.049 ± 0.148</td><td>0.357 ± 0.064</td><td>0.592 ± 0.296</td></tr>
+    <tr><td class="l">imbalanced_fixed_300</td><td>0.181 ± 0.041</td><td>0.367 ± 0.135</td><td>0.012 ± 0.006</td><td>0.202 ± 0.022</td><td class="best">0.505 ± 0.090</td></tr>
+    <tr><td class="l">chain_mixed5_60</td><td class="best">0.349 ± 0.121</td><td>0.320 ± 0.089</td><td>0.022 ± 0.012</td><td>0.340 ± 0.098</td><td>0.332 ± 0.079</td></tr>
+    <tr><td class="l">DCH1</td><td>0.632 ± 0.003</td><td>0.643 ± 0.018</td><td>0.691 ± 0.083</td><td>0.665 ± 0.033</td><td class="best">0.795 ± 0.141</td></tr>
+    <tr><td class="l">IH</td><td>0.221 ± 0.078</td><td>−0.022 ± 0.050</td><td>0.346 ± 0.311</td><td class="best">0.924 ± 0.000</td><td>0.920 ± 0.039</td></tr>
+    <tr><td class="l">EC</td><td>0.542 ± 0.000</td><td>0.542 ± 0.000</td><td>0.281 ± 0.178</td><td>0.606 ± 0.084</td><td class="best">0.700 ± 0.121</td></tr>
+    <tr><td class="l">IEH</td><td>0.341 ± 0.143</td><td>0.220 ± 0.261</td><td>0.463 ± 0.082</td><td class="best">0.654 ± 0.081</td><td>0.640 ± 0.129</td></tr>
+  </table>
+  <p class="tiny" style="margin-top:10px">Final-checkpoint ARI; hierarchy rows are the mean over required levels. Bold = best mean; several "wins" are within one standard deviation.</p>
+  <aside class="notes">Read the standard deviations before the bold. On UB_mixed, chain_mixed5_60 and IEH the top two or three models are statistically tied with five seeds. The clear separations are fixed5_6 (NSGD, RG), imbalanced_fixed_300 (RG), IH (NSGD and RG together) and EC and DCH1 (RG ahead of the rest, but with larger variance).</aside>
+</section>
+
+<section class="slide" data-section="Benchmark">
+  <div class="kicker">Per level</div>
+  <h2>On the benchmark hierarchies the coarse level is nearly free</h2>
+  <table style="font-size:17px">
+    <tr><th class="l">Level ARI (fine → coarse)</th><th>SyncMap</th><th>Symmetric</th><th>TSFMap</th><th>NSGD</th><th>RG</th></tr>
+    <tr><td class="l">DCH1 · L1 / L2</td><td>0.26 / 1.00</td><td>0.29 / 1.00</td><td><b>0.97</b> / 0.42</td><td>0.33 / 1.00</td><td>0.59 / 1.00</td></tr>
+    <tr><td class="l">IH · L1 / L2</td><td>0.37 / 0.07</td><td>−0.02 / −0.02</td><td>0.42 / 0.27</td><td><b>0.85</b> / 1.00</td><td>0.84 / 1.00</td></tr>
+    <tr><td class="l">EC · L1 / L2</td><td>0.08 / 1.00</td><td>0.08 / 1.00</td><td><b>0.50</b> / 0.06</td><td>0.21 / 1.00</td><td>0.40 / 1.00</td></tr>
+    <tr><td class="l">IEH · L1 / L2 / L3 / L4</td><td>0.48 / 0.76 / 0.10 / 0.02</td><td>0.13 / 0.18 / 0.27 / 0.29</td><td>0.48 / 0.69 / 0.37 / 0.31</td><td>0.48 / 0.46 / 0.68 / <b>1.00</b></td><td><b>0.57</b> / 0.57 / <b>0.85</b> / 0.57</td></tr>
+  </table>
+  <div class="cols" style="flex:0 0 auto;margin-top:16px">
+    <div class="take">SyncMap, Symmetric, NSGD and RG all get L2 = 1.00 on DCH1 and EC. The top level has only two groups, and the walk crosses between them with probability 0.11, so it stays inside one group 89% of the time.</div>
+    <div class="take warn">The models differ almost only at the fine level, so these graphs cannot show whether RG's multi-scale design helps the coarse levels. Part 5 builds harder hierarchies to test exactly that.</div>
+  </div>
+  <aside class="notes">This table is why I designed the supplementary experiments. On DCH1 and EC, four of five models solve the coarse level perfectly; TSFMap is the mirror image, perfect at the fine level and poor at the coarse level. IEH's four levels are partly degenerate: its labels repeat across levels for some chunks, and its 18 states leave chunks of two or three symbols. RG's advantage on these graphs is mostly at the fine level.</aside>
+</section>
+
+<section class="slide" data-section="Benchmark">
+  <div class="kicker">3-D maps · flat</div>
+  <h2>Imbalanced communities: RG keeps the large and the small chunks apart</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/latent_imbalanced_fixed_300.png" alt="Final 3-D maps of five models on imbalanced_fixed_300, coloured by true chunk."></div>
+  <p class="small muted" style="margin-top:6px">imbalanced_fixed_300 · 300 states in 14 chunks of very different sizes · seed 0 · each model in its own 3-D space.</p>
+  <aside class="notes">This is RG's clearest flat result in the benchmark: 0.51 against 0.37 for the next model. Very unequal chunk sizes are hard for one density threshold. A plausible reading, not tested here, is that the rest-length spring spreads large chunks without letting them swallow small ones.</aside>
+</section>
+
+<section class="slide" data-section="Benchmark">
+  <div class="kicker">Over time</div>
+  <h2>Scores jump between checkpoints — endpoints alone are noisy</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/curves_IEH.png" alt="ARI against input steps on IEH for five models, seed 0; all curves fluctuate strongly between checkpoints."></div>
+  <p class="small muted" style="margin-top:6px">IEH, seed 0, ARI every 2,000 steps. The benchmark table uses the final checkpoint; the supplementary experiments average the last five checkpoints (last 10,000 steps) instead.</p>
+  <aside class="notes">The hierarchy readout is a discrete cut of a moving map, so it can jump by 0.2 or more between neighbouring checkpoints. That is one reason five seeds are not enough to separate close models, and why the supplementary runs report a late-window mean.</aside>
+</section>
+
+<!-- ============================================================ 5. Targeted experiments -->
+<section class="slide section-slide" data-section="Targeted experiments">
+  <div class="num">PART 5</div>
+  <h1>Targeted experiments</h1>
+  <p class="muted">Where does each model win, and does RG's hierarchy help when the coarse level is hard?</p>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">Design</div>
+  <h2>Three questions the benchmark could not answer</h2>
+  <div class="grid3">
+    <div class="card"><h3>A · Orientation</h3><p class="small">Is RG better on few large communities and NSGD on many small ones? Seven 300-state graphs from 3×100 to 60×5.</p></div>
+    <div class="card"><h3>B · Harder hierarchies</h3><p class="small">Does RG keep coarse groups apart when they are weakly separated? Four hierarchies × three mixing levels.</p></div>
+    <div class="card"><h3>C · Recursion</h3><p class="small">Is it the recursion that helps? RG with <code>level1_enabled=false</code>: same kernel and readout, no tokens, no upper levels, no macro feedback.</p></div>
+  </div>
+  <ul class="small" style="margin-top:20px">
+    <li>100k steps, 5 paired seeds (one seed = the same walk for every model), all five models plus RG without recursion: 535 runs.</li>
+    <li>Score: formal ARI averaged over the last 5 checkpoints (last 10k steps), not the final one.</li>
+    <li>Diagnostic: oracle-K — the same map cut at the true cluster count — separates "the map lacks it" from "the readout misses it".</li>
+    <li>Every state is visited within 0.4k–34k steps on every graph, so 100k steps is at least 3× full coverage.</li>
+  </ul>
+  <aside class="notes">These experiments were designed after looking at the benchmark: its flat graphs only hint at where each model wins, and its hierarchies are too easy at the coarse level to test RG's multi-scale design. Everything else is kept fixed: the same profiles, the same readout and the same 100,000 steps. Two changes make the numbers steadier: the score is a late-window average, and seeds are paired, so we can count on how many seeds one model beats another.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">A · Orientation</div>
+  <h2>Community orientation decides the flat winner</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="../../results/supp/figures/orientation_sweep.png" alt="ARI against community count at 300 states for five models: RG is best from 3×100 to 20×15, NSGD from 30×10 to 60×5, where it is perfect."></div>
+    <div>
+      <ul class="small">
+        <li>RG beats NSGD on <b>every seed</b> from 3×100 to 15×20, by 0.23–0.38; at 20×15 by 0.09.</li>
+        <li>NSGD wins from 30×10 (by 0.29) and is perfect on 60×5, where RG scores 0.37.</li>
+        <li>Crossover: between 20 and 30 communities of 15–10 states.</li>
+        <li>Nobody solves few large chain-shaped communities: RG's best is 0.60 (10×30). TSFMap fails throughout.</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">All seven graphs have exactly 300 states; only the split into communities changes. NSGD improves steadily with the number of communities, consistent with a strong relation spring plus an active pulse that stabilises many small, dense neighbourhoods quickly. RG peaks at ten communities of thirty and degrades as communities shrink. The two curves cross between twenty and thirty communities. These are paired comparisons over five seeds; for example at 5×60 RG is ahead on all five seeds with p below 0.001.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">B · Harder hierarchies</div>
+  <h2>Four hierarchies, three levels of coarse mixing</h2>
+  <div class="cols w40">
+    <div>
+      <table style="font-size:16px">
+        <tr><th class="l">Graph</th><th>States</th><th class="l">Groups</th></tr>
+        <tr><td class="l">DCH1 (benchmark)</td><td>18</td><td class="l">6 / 2</td></tr>
+        <tr><td class="l">HIMB3 (uneven)</td><td>48</td><td class="l">10 / 3</td></tr>
+        <tr><td class="l">H4x4x5</td><td>80</td><td class="l">16 / 4</td></tr>
+        <tr><td class="l">H3x3x3x4</td><td>108</td><td class="l">27 / 9 / 3</td></tr>
+      </table>
+    </div>
+    <div>
+      <p class="small">Probability that the next state stays in the same top-level group:</p>
+      <table style="font-size:16px">
+        <tr><th class="l">level_switch_decay</th><th>0.25 (default)</th><th>0.5</th><th>0.75</th></tr>
+        <tr><td class="l">two-level graphs, top level</td><td>0.89</td><td>0.78</td><td>0.66</td></tr>
+        <tr><td class="l">H3x3x3x4, middle / top</td><td>0.86 / 0.97</td><td>0.69 / 0.89</td><td>0.49 / 0.75</td></tr>
+        <tr><td class="l">fine level (chunk)</td><td>0.47–0.49</td><td>0.38–0.43</td><td>0.27–0.36</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:12px">More top groups and more states than the benchmark; a larger decay makes the walk jump between coarse groups more often, so the coarse levels separate less.</p>
+    </div>
+  </div>
+  <aside class="notes">The new graphs fix the two weaknesses of the benchmark hierarchies: three or four top-level groups instead of two, so the coarse level is no longer a two-way split, and up to 108 states. The mixing parameter is the environment's level-switch decay; 0.25 is the default every benchmark run used. Stay probabilities are computed from the exact transition matrix by tools/make_supp_datasets.py --stats.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">B · Results</div>
+  <h2>When the coarse level gets hard, NSGD collapses and RG holds</h2>
+  <div class="fig"><img src="../../results/supp/figures/hierarchy_difficulty.png" alt="Level-mean ARI against mixing for NSGD, RG and RG without recursion on four hierarchies."></div>
+  <div class="cols" style="flex:0 0 auto;margin-top:6px">
+    <p class="small">At the hardest mixing NSGD drops to 0.06–0.10 on HIMB3, H4x4x5 and H3x3x3x4; RG keeps 0.42, 0.33 and 0.17 (5/5 seeds each). RG leads on DCH1 at easy and medium mixing.</p>
+    <p class="small">At easy and medium mixing they tie on HIMB3 and H4x4x5, and NSGD is clearly ahead on the three-level H3x3x3x4 (0.62 vs 0.38, 0/5 seeds for RG).</p>
+  </div>
+  <aside class="notes">Level-mean ARI, late-window average, five seeds, error bars one standard deviation. Two messages. First, a hard coarse level is where RG's design pays off: NSGD loses the top-level groups while RG keeps them. Second, RG is not uniformly better: on the deepest graph with clearly separated levels NSGD wins the formal score. The next two slides ask how much of that is the readout and how much is the recursion. SyncMap, not shown here, is surprisingly robust at the hardest mixing (0.43 on HIMB3, 0.36 on H3x3x3x4); Symmetric and TSFMap collapse on the new graphs; all numbers are in results/supp/REPORT.md.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">C · Recursion</div>
+  <h2>The recursion is what helps</h2>
+  <div class="cols">
+    <table style="font-size:16.5px">
+      <tr><th class="l">RG − RG w/o recursion</th><th>0.25</th><th>0.5</th><th>0.75</th></tr>
+      <tr><td class="l">DCH1</td><td>+0.06</td><td>+0.11</td><td>+0.22</td></tr>
+      <tr><td class="l">HIMB3</td><td>+0.05</td><td>+0.08</td><td>+0.25</td></tr>
+      <tr><td class="l">H4x4x5</td><td>+0.14</td><td>+0.20</td><td>+0.31</td></tr>
+      <tr><td class="l">H3x3x3x4</td><td>+0.05</td><td>+0.20</td><td>+0.17</td></tr>
+      <tr class="hl"><td class="l">mean</td><td>+0.08</td><td>+0.15</td><td>+0.24</td></tr>
+    </table>
+    <ul class="small">
+      <li>Full RG is ahead in <b>all 12</b> settings; on all five seeds in 8 of them.</li>
+      <li>The gain grows with mixing: recursion matters most when the coarse level is hard.</li>
+      <li>Without recursion RG collapses like NSGD at decay 0.75 (H4x4x5: 0.03; H3x3x3x4: 0.00).</li>
+      <li>The kernel alone costs ~20 s per run on these graphs; full RG 70–133 s.</li>
+    </ul>
+  </div>
+  <div class="take ok">This is the ablation the earlier analysis lacked: same kernel, same readout, same seeds — only tokenization, upper levels and macro feedback removed.</div>
+  <aside class="notes">Level-mean ARI differences, paired over five seeds. "RG without recursion" sets level1_enabled to false: the level-0 NS kernel runs exactly as inside RG, with the same forces and the same readout, but no tokens are formed, no upper levels run and no macro feedback reaches level 0. The difference is therefore attributable to the recursive part as a whole; this experiment does not split it further into tokenization versus macro feedback.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">Map or readout?</div>
+  <h2>RG's maps match or beat NSGD's in 11 of 12 settings</h2>
+  <div class="cols w40">
+    <table style="font-size:15.5px">
+      <tr><th class="l">Level mean, formal → oracle</th><th>NSGD</th><th>RG</th></tr>
+      <tr><td class="l">DCH1 · 0.25</td><td>0.66 → 0.76</td><td>0.79 → 0.95</td></tr>
+      <tr><td class="l">HIMB3 · 0.75</td><td>0.14 → 0.41</td><td>0.40 → 0.73</td></tr>
+      <tr><td class="l">H4x4x5 · 0.25</td><td>0.44 → 0.68</td><td>0.54 → 0.76</td></tr>
+      <tr><td class="l">H4x4x5 · 0.75</td><td>0.12 → 0.51</td><td>0.44 → 0.65</td></tr>
+      <tr class="hl"><td class="l">H3x3x3x4 · 0.25</td><td>0.61 → 0.68</td><td>0.32 → 0.71</td></tr>
+      <tr><td class="l">H3x3x3x4 · 0.5</td><td>0.50 → 0.74</td><td>0.28 → 0.68</td></tr>
+      <tr><td class="l">H3x3x3x4 · 0.75</td><td>0.18 → 0.44</td><td>0.21 → 0.55</td></tr>
+    </table>
+    <ul class="small">
+      <li>The formal readout loses 0.07–0.40 for every model: it is a large part of every score.</li>
+      <li>On H3x3x3x4 at easy mixing NSGD wins formally, but the maps are comparable (0.68 vs 0.71).</li>
+      <li>At easy mixing NSGD's map does hold the coarse groups (oracle level 2 = 1.00) that the MST cut misses.</li>
+      <li>At high mixing RG's coarse groups are really there: oracle level 2 of 0.97 vs NSGD's 0.70 on H4x4x5, 0.97 vs 0.49 on HIMB3.</li>
+    </ul>
+  </div>
+  <aside class="notes">Oracle-K cuts the same final coordinates with Ward clustering at the true number of clusters for each level. It leaks the true count, so it is never a score, but it answers a different question: is the structure in the map? Final checkpoint, five-seed means; the full table is in the supplementary report. Two consequences. The single-checkpoint MST readout is now the main bottleneck for both models, and improving it is the most valuable next step. And RG's large formal advantages at high mixing are real advantages of the map, not artefacts of the readout.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">3-D maps · H4x4x5</div>
+  <h2>What "holding the coarse level" looks like</h2>
+  <div class="fig"><img src="../../results/supp/figures/latent_H4x4x5.png" alt="3-D maps on H4x4x5 for NSGD, RG without recursion and RG at decay 0.25 and 0.75, coloured by true top-level group."></div>
+  <aside class="notes">Top row, easy mixing: NSGD shrinks each of the four groups to a tight point. The groups are perfectly separated, but the fine chunks inside are merged and the MST cut scores level 2 at only 0.32 on this seed, a readout failure. RG keeps four groups with visible chunk structure inside. Bottom row, hard mixing: NSGD and RG without recursion lose the groups entirely (formal 0.00), while full RG still places the four groups apart.</aside>
+</section>
+
+<section class="slide" data-section="Targeted experiments">
+  <div class="kicker">Answer</div>
+  <h2>What each model is good at</h2>
+  <table style="font-size:18px">
+    <tr><th class="l"></th><th class="l"><span class="sw" style="background:var(--nsgd)"></span>NSGD</th><th class="l"><span class="sw" style="background:var(--rg)"></span>RG</th></tr>
+    <tr><td class="l">Flat graphs</td><td class="l">many small communities (≥ 30 of ≤ 10 states)</td><td class="l">few to medium communities (3–20 of 15–100 states)</td></tr>
+    <tr><td class="l">Hierarchies</td><td class="l">well-separated levels, incl. the three-level graph at easy/medium mixing</td><td class="l">weakly separated coarse levels; the fine level of small hierarchies</td></tr>
+    <tr><td class="l">Why (evidence)</td><td class="l">consistent with its strong spring + pulse (not ablated here)</td><td class="l">recursion: without it RG collapses like NSGD</td></tr>
+    <tr><td class="l">Weak spot</td><td class="l">collapses when coarse groups mix; over-shrinks groups the readout then misses</td><td class="l">many small communities; deep levels limited by the scheduler</td></tr>
+    <tr><td class="l">Cost / 100k steps</td><td class="l">6–10 s</td><td class="l">32–34 s flat · 70–133 s hierarchy</td></tr>
+  </table>
+  <aside class="notes">This is the answer to the question that motivated Part 5. The two models are complementary rather than ranked. The "why" row only states mechanisms the experiments support: for RG, the recursion ablation; for NSGD, the orientation sweep is consistent with its spring and pulse but there was no component ablation for NSGD.</aside>
+</section>
+
+<!-- ============================================================ 6. Conclusions -->
+<section class="slide section-slide" data-section="Conclusions">
+  <div class="num">PART 6</div>
+  <h1>Conclusions</h1>
+  <p class="muted">What the evidence supports, what it does not, and what comes next.</p>
+</section>
+
+<section class="slide" data-section="Conclusions">
+  <div class="kicker">Supported</div>
+  <h2>What the evidence supports</h2>
+  <ul>
+    <li>RG and NSGD are complementary: community orientation decides flat graphs (crossover at 20–30 communities of 300 states).</li>
+    <li>On hierarchies with weakly separated coarse levels RG keeps the groups apart where NSGD collapses — and the map, not only the score, shows it.</li>
+    <li>The recursion causes the gain: removing it costs 0.05–0.31 level-mean ARI in every hierarchy setting, more as mixing grows.</li>
+    <li>On the small benchmark hierarchies RG's advantage is at the fine level; their coarse level is solved by four of five models.</li>
+  </ul>
+  <div class="take">These are system-level results at 100,000 equal input steps with the maintained profiles; the recursion ablation is the only component-level test.</div>
+  <aside class="notes">Each bullet maps to a specific experiment: orientation sweep, hierarchy difficulty sweep with oracle-K, the recursion ablation, and the benchmark's per-level table.</aside>
+</section>
+
+<section class="slide" data-section="Conclusions">
+  <div class="kicker">Not supported · limitations</div>
+  <h2>What it does not show</h2>
+  <ul class="small">
+    <li><b>No universal winner.</b> NSGD wins many small communities and the three-level graph at easy mixing; at the hardest mixing SyncMap matches or beats RG on two of the four hierarchies.</li>
+    <li><b>No compute claim.</b> RG costs 3–4× NSGD on flat graphs and 10–20× on hierarchies per step; nothing here is equal wall-clock.</li>
+    <li><b>The readout is a bottleneck.</b> The single-checkpoint MST cut loses 0.07–0.40 ARI for every model and decides some comparisons.</li>
+    <li><b>Deep levels are under-fed.</b> The default scheduler aliases upper clocks (50 → 3,950 → ~2M steps); the deepest results are limited by that, not only by the dynamics.</li>
+    <li><b>Variance.</b> RG's seed spread is often the largest; five seeds separate large effects, not small ones.</li>
+    <li><b>Scope.</b> Synthetic graph walks only, 100,000 steps, 3-D maps; no visual data and no causal inference yet.</li>
+  </ul>
+  <aside class="notes">These limits do not overturn the large structural effects, but they bound how the small differences may be stated. In particular, "RG is better" without a qualifier is never correct for these results.</aside>
+</section>
+
+<section class="slide" data-section="Conclusions">
+  <div class="kicker">Next</div>
+  <h2>What comes next</h2>
+  <div class="grid2">
+    <div class="card"><h3>1 · Readout</h3><p class="small">A persistent, multi-checkpoint cut rule (the candidate protocol in Part 2), validated against the oracle-K gap.</p></div>
+    <div class="card"><h3>2 · Scheduler</h3><p class="small">Give upper levels their intended cadence, then repeat the deep-hierarchy experiments.</p></div>
+    <div class="card"><h3>3 · Fair budgets</h3><p class="small">Equal wall-clock and matched memory alongside equal steps; ablate NSGD's spring and pulse as RG's recursion was ablated.</p></div>
+    <div class="card"><h3>4 · Causal inference</h3><p class="small">Directed relations between the chunks RG finds: the CI line, from directed transition statistics to a tested causal-structure method.</p></div>
+  </div>
+  <aside class="notes">The first two items are now the most valuable, because the experiments show that both the readout and the deep-level schedule limit what RG's maps can express in the score. The fourth item is the original research goal: hierarchical chunks are the units between which causal relations should be inferred.</aside>
+</section>
+
+<section class="slide title-slide" data-section="Conclusions">
+  <div class="kicker">Take-aways</div>
+  <h1 style="font-size:44px">Three sentences</h1>
+  <ol style="margin-top:6px">
+    <li>RG turns SyncMap from one geometry into recursive multi-scale dynamics: unsupervised tokens become the next level's input.</li>
+    <li>The recursion measurably helps where coarse structure is weak, and RG wins few-to-medium communities, while NSGD wins many small ones.</li>
+    <li>It is not a universal winner: gains, cost, variance and the readout all depend on the structure.</li>
+  </ol>
+  <p class="small muted" style="margin-top:22px">Everything in this deck: <code>github.com/Cyletix/SyncMapRGCI</code> · benchmark report · supplementary report · this presentation in <code>docs/presentation/</code></p>
+  <aside class="notes">If the audience remembers one thing: RG's contribution is not "another clustering step", it is that unsupervised coarse-graining becomes the next level's input and keeps acting on the dynamics. The experiments show that this bias fits some structures and clearly exposes its costs; the readout and the level clock are the open problems.</aside>
+</section>
+
+<!-- ============================================================ Appendix -->
+<section class="slide section-slide" data-section="Appendix">
+  <div class="num">APPENDIX</div>
+  <h1>Parameters and reproduction</h1>
+</section>
+
+<section class="slide" data-section="Appendix">
+  <div class="kicker">A1 · RG level 0</div>
+  <h2>RG level-0 parameters (maintained profile <code>rg</code>)</h2>
+  <div class="cols">
+    <table>
+      <tr><th class="l">Item</th><th>Value</th></tr>
+      <tr><td class="l">learning rate / max step</td><td>0.05 / 2.0</td></tr>
+      <tr><td class="l">primitive active / inactive</td><td>0.5 / 2.0</td></tr>
+      <tr><td class="l">graph spring <i>k</i><sub>attr</sub></td><td>0.07</td></tr>
+      <tr><td class="l">local obstacle <i>k</i><sub>repulse</sub></td><td>1.0</td></tr>
+      <tr><td class="l">macro repulsion <i>k</i><sub>macro</sub></td><td>0.1</td></tr>
+      <tr><td class="l">cross-macro attraction scale</td><td>0.001</td></tr>
+      <tr><td class="l">transition memory <i>M</i></td><td>300 (EMA, half-life ≈ 208)</td></tr>
+      <tr><td class="l">graph push / top-<i>k</i> / threshold</td><td>100 / 12 / 0.1</td></tr>
+      <tr><td class="l">internal clustering period</td><td>1,000</td></tr>
+      <tr><td class="l">plasticity / pulse</td><td>off / off</td></tr>
+    </table>
+    <table>
+      <tr><th class="l">Recursion</th><th>Value</th></tr>
+      <tr><td class="l">scale growth</td><td>3.16 per level</td></tr>
+      <tr><td class="l">memory growth</td><td>×10 per level</td></tr>
+      <tr><td class="l">scheduler</td><td><code>nested_modulo</code></td></tr>
+      <tr><td class="l">warm-up / renormalise</td><td>2,000 / 50</td></tr>
+      <tr><td class="l">levels on flat graphs</td><td>L0 only</td></tr>
+      <tr><td class="l">levels on hierarchies</td><td>depth + 1</td></tr>
+      <tr><td class="l">hierarchy readout</td><td>MST gaps, ratio ≥ 1.05</td></tr>
+      <tr><td class="l">observation threshold</td><td>0.1</td></tr>
+    </table>
+  </div>
+  <p class="tiny">Every run's full effective parameters are stored per row in the result CSVs (<code>effective_model_params</code>, <code>effective_env_params</code>).</p>
+  <aside class="notes">M = 300 is not a hard window: the relation matrix is an exponential moving average with beta = 1 − 1/300, so 95% of its weight covers about 900 raw steps. The graph push and clustering periods are cache-refresh cadences, not extra memory.</aside>
+</section>
+
+<section class="slide" data-section="Appendix">
+  <div class="kicker">A2 · Baselines</div>
+  <h2>Baseline parameters (maintained profiles)</h2>
+  <table style="font-size:16.5px">
+    <tr><th class="l">Model</th><th class="l">Dynamics</th><th class="l">Memory / state</th><th class="l">Space</th></tr>
+    <tr><td class="l">SyncMap</td><td class="l">constant learning rate 0.05</td><td class="l">none (input tail only)</td><td class="l">3-D, size 10</td></tr>
+    <tr><td class="l">Symmetric</td><td class="l">constant 0.05; stochastic positive selection 0.3</td><td class="l">state memory 3; 10k moving-average readout</td><td class="l">3-D, size 10</td></tr>
+    <tr><td class="l">TSFMap</td><td class="l">rate 0.001; μ<sub>+</sub> 6, μ<sub>−</sub> 3, μ<sub>r</sub> 2</td><td class="l">velocity decay 0.999</td><td class="l">max-abs normalised; Ward 2–16 clusters</td></tr>
+    <tr><td class="l">NSGD</td><td class="l">rate 0.05; spring 1.0 + pulse 2.0; max step 5</td><td class="l">co-activity memory 100; plasticity 0.99 → 0.01</td><td class="l">density-scaled; KNN 12; push every 10</td></tr>
+    <tr><td class="l">RG</td><td class="l">see A1</td><td class="l">transition memory 300 · 10<sup><i>L</i></sup></td><td class="l">3-D, 3.16<sup><i>L</i></sup> natural length</td></tr>
+  </table>
+  <p class="small muted" style="margin-top:12px">All five are scored by the same evaluator: DBSCAN on flat graphs and MST gaps on hierarchies, applied to the final 3-D coordinates. The models' own internal clustering settings do not enter the formal score.</p>
+  <aside class="notes">TSFMap only decays its velocity on valid update steps, so its raw-step memory depends on the dataset. NSGD's plasticity is a separate cluster-dependent freeze, not part of its relation memory.</aside>
+</section>
+
+<section class="slide" data-section="Appendix">
+  <div class="kicker">A3 · Reproduce</div>
+  <h2>Commands</h2>
+<pre># one comparison cell: 5 seeds of every model on one graph
+python main.py --task 2 --profiles syncmap symmetric tsf nsgd rg \
+  --datasets datasets/hierarchy/DCH1_fixed_chunk_6_3.dot \
+  --comparison-sequence-lengths 100000 --comparison-trials 5 --metric ari --seed 0
+
+# the whole benchmark, then the report and figures
+python tools/benchmark.py run
+python tools/benchmark.py report
+
+# supplementary experiments (Part 5)
+python tools/make_supp_datasets.py --stats
+python tools/supp_run.py run --workers 3
+python tools/supp_run.py showcase
+python tools/supp_report.py
+
+# the diagrams in this deck
+python tools/deck_figures.py</pre>
+  <p class="small muted">Run from the repository root. Seeds 0–4 are trials 1–5 of <code>--seed 0</code>.</p>
+  <aside class="notes">Everything in this deck can be regenerated from these commands; nothing depends on files outside the repository.</aside>
+</section>
+
+</div>
+
+<div id="notes"><h4>Speaker notes</h4><div id="notes-body"></div></div>
+<div id="hud"><button id="prev" aria-label="Previous slide">‹</button><button id="count" aria-label="Slide number">1</button><button id="next" aria-label="Next slide">›</button><button id="notes-btn" aria-label="Toggle speaker notes">notes</button></div>
+
+<script>
+(function () {
+  const stage = document.getElementById("stage");
+  const slides = Array.from(document.querySelectorAll("section.slide"));
+  const total = slides.length;
+  slides.forEach((s, k) => {
+    const f = document.createElement("div");
+    f.className = "footer";
+    f.innerHTML = "<span>RG · Recursive Grouping" + (s.dataset.section ? " · " + s.dataset.section : "") + "</span><span>" + (k + 1) + " / " + total + "</span>";
+    s.appendChild(f);
+  });
+  const notes = document.getElementById("notes");
+  const notesBody = document.getElementById("notes-body");
+  let i = Math.min(Math.max(parseInt(location.hash.slice(1), 10) - 1 || 0, 0), total - 1);
+  function fit() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+  }
+  function show(n) {
+    i = Math.min(Math.max(n, 0), total - 1);
+    slides.forEach((s, k) => s.classList.toggle("active", k === i));
+    const a = slides[i].querySelector("aside.notes");
+    notesBody.innerHTML = a ? a.innerHTML : "<span style='color:var(--ink-3)'>No notes for this slide.</span>";
+    document.getElementById("count").textContent = (i + 1) + " / " + total;
+    if (location.hash !== "#" + (i + 1)) history.replaceState(null, "", "#" + (i + 1));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+    const k = e.key;
+    if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "Enter") { e.preventDefault(); show(i + 1); }
+    else if (k === "ArrowLeft" || k === "PageUp" || k === "Backspace") { e.preventDefault(); show(i - 1); }
+    else if (k === "Home") show(0);
+    else if (k === "End") show(total - 1);
+    else if (k === "n" || k === "N") notes.classList.toggle("on");
+    else if (k === "f" || k === "F") { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen(); }
+  });
+  document.getElementById("prev").onclick = () => show(i - 1);
+  document.getElementById("next").onclick = () => show(i + 1);
+  document.getElementById("notes-btn").onclick = () => notes.classList.toggle("on");
+  window.addEventListener("hashchange", () => show((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  const hud = document.getElementById("hud");
+  let hudTimer = 0;
+  document.addEventListener("mousemove", () => {
+    hud.classList.add("show");
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(() => hud.classList.remove("show"), 1800);
+  });
+  window.addEventListener("resize", fit);
+  fit();
+  show(i);
+})();
+</script>
+</body>
+</html>

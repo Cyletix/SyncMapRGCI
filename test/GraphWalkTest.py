@@ -55,7 +55,7 @@ class GraphWalkTest:
         self.time_delay = time_delay
         self.time_counter = 0
 
-        # 初始化图结构
+        # Load the graph structure.
         self._load_graph(filename, allow_resize=True)
 
         #random start    
@@ -82,8 +82,8 @@ class GraphWalkTest:
 
     def _load_graph(self, filename: str, allow_resize: bool) -> None:
         """
-        内部工具：加载 .dot 图并更新 g / true_label / a。
-        当 allow_resize=False 时，保持 output_size 不变，否则抛出异常。
+        Internal helper: load a .dot graph and update g / true_label / a.
+        With allow_resize=False the output_size must stay the same; otherwise an exception is raised.
         """
         filename_resolved = self._resolve_path(filename)
         g_new = nx.DiGraph(nx.nx_agraph.read_dot(filename_resolved))
@@ -114,12 +114,12 @@ class GraphWalkTest:
 
     def switch_dataset(self, filename: str) -> None:
         """
-        切换到新的图结构，但保持输出维度不变。
-        用于 live 视图中的“图结构切换”实验。
+        Switch to a new graph structure while keeping the output dimension.
+        Used by the graph-switch experiment in the live view.
         """
-        # 仅允许与当前 output_size 相同的图，否则不能复用已有模型权重
+        # Only graphs with the current output_size are allowed; otherwise the model weights cannot be reused.
         self._load_graph(filename, allow_resize=False)
-        # 重置行走状态，但保留 output_size 和历史统计在上层（模型）中
+        # Reset the walk state; output_size and the history statistics stay in the model.
         self.time_counter = 0
         self.output_class = int(np.random.randint(self.output_size))  # type: ignore
         self.previous_output_class = None

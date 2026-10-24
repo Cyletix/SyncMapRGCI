@@ -1,2 +1,2 @@
-"""Shared Elrion runtime helpers, diagnostics, and experiment tooling."""
+"""Shared SyncMapRGCI runtime helpers, diagnostics, and experiment tooling."""
 

@@ -28,7 +28,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results" / "benchmark"
 
-# Scenarios used repeatedly as showcase/diagnostic cases in the research notes.
+# Representative scenarios: balanced, unbalanced, imbalanced and chain-like flat chunks; two- to four-level hierarchies.
 DATASETS: list[tuple[str, str]] = [
     ("fixed5_6", "datasets/fixed5_6.dot"),
     ("UB_mixed_chunk_20_5_5", "datasets/UB_mixed_chunk_20_5_5.dot"),
@@ -236,15 +236,6 @@ def _marker(rank: int) -> str:
     return CLASS_MARKERS[(rank + rank // 8) % 8]
 
 
-def _pca2(points: Any) -> Any:
-    import numpy as np
-
-    x = np.asarray(points, dtype=float)
-    x = x - x.mean(axis=0)
-    _, _, vt = np.linalg.svd(x, full_matrices=False)
-    return x @ vt[:2].T
-
-
 def _load_runs() -> dict[tuple[str, str], dict[str, Any]]:
     runs = {}
     for path in (OUT / "runs").glob("*.json"):
@@ -359,19 +350,6 @@ def _hierarchy_tree(dot_path: Path) -> tuple[dict[str, tuple[float, int]], list[
     return pos, edges
 
 
-def _padded_hull(ax: Any, xy: Any, pad: float, color: str, alpha: float, linestyle: str) -> None:
-    import numpy as np
-    from matplotlib.patches import Polygon
-    from scipy.spatial import ConvexHull
-
-    pts = np.asarray(xy, dtype=float)
-    # Hull of a disc around every point gives a rounded, padded region.
-    ring = np.concatenate([pts + pad * np.array([np.cos(a), np.sin(a)]) for a in np.linspace(0, 2 * np.pi, 16, endpoint=False)])
-    hull = ring[ConvexHull(ring).vertices]
-    ax.add_patch(Polygon(hull, closed=True, facecolor=color, alpha=alpha, edgecolor="none"))
-    ax.add_patch(Polygon(hull, closed=True, facecolor="none", edgecolor=color, linewidth=1.2, linestyle=linestyle, alpha=0.9))
-
-
 def _fig_hero(runs: dict[tuple[str, str], dict[str, Any]], name: str = "DCH1") -> None:
     """Generative hierarchy next to the map RG learns from the walk alone (seed 0)."""
     import matplotlib.pyplot as plt
@@ -383,17 +361,20 @@ def _fig_hero(runs: dict[tuple[str, str], dict[str, Any]], name: str = "DCH1") -
     coarse = run["true_label_levels"]["level_1"]
     fine_ids, coarse_ids = sorted(set(fine)), sorted(set(coarse))
 
-    fig = plt.figure(figsize=(14, 6.2), facecolor=FIG_BG)
-    grid = fig.add_gridspec(2, 3, width_ratios=[1.25, 1, 1], height_ratios=[1, 1.15], wspace=0.08, hspace=0.32)
-    left = fig.add_subplot(grid[:, 0])
-    right = fig.add_subplot(grid[0, 1:])
-    zooms = [fig.add_subplot(grid[1, 1]), fig.add_subplot(grid[1, 2])]
-    for ax in (left, right, *zooms):
-        ax.set_facecolor(FIG_BG)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        for spine in ax.spines.values():
-            spine.set_visible(False)
+    fig = plt.figure(figsize=(17, 5.0), facecolor=FIG_BG)
+    grid = fig.add_gridspec(1, 4, width_ratios=[1.35, 1, 1, 1], wspace=0.02)
+    left = fig.add_subplot(grid[0, 0])
+    left.set_facecolor(FIG_BG)
+    left.set_xticks([])
+    left.set_yticks([])
+    for spine in left.spines.values():
+        spine.set_visible(False)
+    # The learned map is shown in its own 3-D coordinates, whole and per group, never projected.
+    right = fig.add_subplot(grid[0, 1], projection="3d")
+    zooms = [fig.add_subplot(grid[0, 2], projection="3d"), fig.add_subplot(grid[0, 3], projection="3d")]
+    for ax in (right, *zooms):
+        _style3d(ax)
+        ax.view_init(elev=VIEW_ELEV, azim=VIEW_AZIM)
 
     pos, edges = _hierarchy_tree(path)
     for child, parent in edges:
@@ -414,44 +395,36 @@ def _fig_hero(runs: dict[tuple[str, str], dict[str, Any]], name: str = "DCH1") -
     left.set_title(f"Hidden structure ({name}): {len(fine)} symbols, {len(fine_ids)} chunks, {len(coarse_ids)} groups",
                    color=INK, fontsize=12, pad=12)
 
-    def draw_points(ax: Any, xy: Any, members: list[int]) -> None:
+    def draw_points(ax: Any, xyz: Any, members: list[int], size: float) -> None:
         for rank, cls in enumerate(fine_ids):
             idx = [i for i in members if fine[i] == cls]
-            if idx:
-                ax.scatter(xy[idx, 0], xy[idx, 1], s=80, marker=CLASS_MARKERS[rank % 8], color=CLASS_COLORS[rank % 8],
-                           edgecolors=FIG_BG, linewidths=1, zorder=3)
+            if not idx:
+                continue
+            color = CLASS_COLORS[rank % 8]
+            centre = xyz[idx].mean(axis=0)
+            for i in idx:  # spokes to the chunk centre keep each chunk readable from any camera angle
+                ax.plot(*zip(xyz[i], centre), color=color, linewidth=0.9, alpha=0.55)
+            ax.scatter(xyz[idx, 0], xyz[idx, 1], xyz[idx, 2], s=size, marker=CLASS_MARKERS[rank % 8], color=color,
+                       edgecolors=SURFACE, linewidths=0.6, depthshade=False)
 
-    xy = _pca2(run["positions"])
-    span = float(np.ptp(xy, axis=0).max())
+    xyz = _unit_cube(run["positions"])
+    draw_points(right, xyz, list(range(len(fine))), 46)
     for g_rank, g in enumerate(coarse_ids):
         idx = [i for i, c in enumerate(coarse) if c == g]
-        _padded_hull(right, xy[idx], 0.06 * span, INK2, 0.08, "--")
-        right.text(xy[idx, 0].mean(), xy[idx, 1].min() - 0.1 * span, f"group {g_rank + 1}", ha="center", va="top",
-                   fontsize=10, color=INK2)
-    draw_points(right, xy, list(range(len(fine))))
-    right.margins(0.1, 0.35)
-    right.set_aspect("equal", adjustable="datalim")
-    right.set_title(f"RG map after {run['steps']:,} steps, learned from the walk alone", color=INK, fontsize=12, pad=10)
+        c = xyz[idx].mean(axis=0)
+        right.text(c[0], c[1], c[2] + 0.38, f"group {g_rank + 1}", ha="center", fontsize=10, color=INK2)
+    right.set_title(f"RG map after {run['steps']:,} steps\nlearned from the walk alone", color=INK, fontsize=12, pad=0)
 
     # Each group again at its own scale: the chunks inside it form the next, smaller clusters.
     for g_rank, (ax, g) in enumerate(zip(zooms, coarse_ids)):
         idx = [i for i, c in enumerate(coarse) if c == g]
-        local = xy[idx]
-        local_span = float(np.ptp(local, axis=0).max()) or 1.0
-        for rank, cls in enumerate(fine_ids):
-            members = [i for i in idx if fine[i] == cls]
-            if members:
-                _padded_hull(ax, xy[members], 0.07 * local_span, CLASS_COLORS[rank % 8], 0.12, "-")
-        draw_points(ax, xy, idx)
-        ax.margins(0.2)
-        ax.set_aspect("equal", adjustable="datalim")
-        ax.set_title(f"group {g_rank + 1}, zoomed in", color=INK2, fontsize=10, pad=6)
-        for spine in ax.spines.values():
-            spine.set_visible(True)
-            spine.set_color(GRID)
+        local = np.full_like(xyz, np.nan)
+        local[idx] = _unit_cube(xyz[idx])
+        draw_points(ax, local, idx, 60)
+        ax.set_title(f"group {g_rank + 1}, zoomed in", color=INK2, fontsize=11, pad=0)
 
     levels = " · ".join(f"level {int(k.split('level')[1].split('_')[0])} ARI {v:.2f}" for k, v in run["level_ari"].items())
-    fig.text(0.69, 0.02, f"2-D PCA projection of the 3-D map; colour / marker = true chunk, dashed region = true group   (seed 0: {levels})",
+    fig.text(0.62, 0.03, f"the model's own 3-D coordinates; colour / marker = true chunk, spokes join a chunk to its centre   (seed 0: {levels})",
              ha="center", fontsize=9, color=INK2)
     fig.savefig(OUT / "figures" / f"hero_rg_{name}.png", dpi=150, facecolor=FIG_BG, bbox_inches="tight", pad_inches=0.25)
     plt.close(fig)
@@ -493,7 +466,8 @@ def report() -> None:
         "", "- Models: " + ", ".join(f"{DISPLAY[p]} (`{p}`)" for p in PROFILES) + ", each with its maintained profile.",
         "- Score: ARI against the true chunks; on hierarchy graphs the mean ARI over every required level (a missing level scores 0). NMI is reported alongside.",
         "- Comparison: `python main.py --task 2 --profiles " + " ".join(PROFILES) + f" --datasets <file> --comparison-sequence-lengths {steps} --comparison-trials {trials} --metric ari --seed 0`.",
-        f"- Showcase (figures, curves, GIFs): `python main.py --task 0 --profile <model> --dataset <file> --steps {steps} --seed 0 --trace true`.",
+        f"- Showcase (figures, curves, GIFs): `python main.py --task 0 --profile <model> --dataset <file> --steps {steps} --seed 0 --record-interval {steps // 100} --trace true --trace-record-interval {steps // 50} --save-json true --save-png false --save-plot false --save-gif false`; the figures and GIFs are drawn by `tools/benchmark.py report` from those runs.",
+        "- The scores are the final checkpoint of each run. The [supplementary experiments](../supp/REPORT.md) average the last five checkpoints and add harder hierarchies.",
         "", "## Results", "", "![ARI by dataset and model](figures/comparison_ari.png)", "",
         "ARI, mean ± std over seeds:", "", "| Dataset | " + " | ".join(DISPLAY[p] for p in PROFILES) + " |",
         "|---|" + "---:|" * len(PROFILES),

@@ -10,8 +10,8 @@ Subcommands
 
 Examples
 --------
-    python tools/conv.py steps --datasets fixed5_6.dot --strategies strict rg --steps 20000
-    python tools/conv.py time  --datasets fixed5_6.dot --strategies strict rg --seconds 60
+    python tools/conv.py steps --datasets fixed5_6.dot --strategies syncmap rg --steps 20000
+    python tools/conv.py time  --datasets fixed5_6.dot --strategies syncmap rg --seconds 60
 """
 from __future__ import annotations
 
