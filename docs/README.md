@@ -7,17 +7,23 @@ Everything public about SyncMapRGCI, by purpose. The repository README is availa
 | If you want to | Read |
 |---|---|
 | know what the project is and run it | [README](../README.md) |
-| understand RG step by step, with results | [Presentation](presentation/index.html) (HTML slides, see below) |
+| get the idea without any SyncMap background | [Beginner presentation](presentation/beginner.html) (HTML slides, see below) |
+| understand RG step by step, with results | [Presentation](presentation/index.html) (detailed version) |
 | see the main comparison | [Benchmark report](../results/benchmark/REPORT.md) |
 | see the targeted follow-up experiments | [Supplementary report](../results/supp/REPORT.md) |
 
-## Presentation
+## Presentations
 
-[`presentation/index.html`](presentation/index.html) is a self-contained slide deck (English, dark theme, speaker notes included): the problem, the RG mechanism piece by piece, the evaluation protocol, the benchmark, the supplementary experiments and the conclusions.
+Two self-contained slide decks (English, dark theme, speaker notes included):
 
-- GitHub shows HTML as source. Open it from a clone (`docs/presentation/index.html` in any browser), or download the single-file version or the PDF from the [releases page](https://github.com/Cyletix/SyncMapRGCI/releases).
+- [`presentation/beginner.html`](presentation/beginner.html), for newcomers with no SyncMap background (18 main slides plus backup): why chunking matters, the task as a game, why choosing the scale is the hard part, SyncMap and RG in one picture each, how a grouping is scored, and the main results in plain words.
+- [`presentation/index.html`](presentation/index.html), the detailed version for SyncMap readers (53 slides): the problem, the RG mechanism piece by piece, the evaluation protocol, the benchmark, the supplementary experiments and the conclusions.
+
+How to use them:
+
+- GitHub shows HTML as source. Open them from a clone (`docs/presentation/*.html` in any browser), or download the single-file versions or the PDFs from the [releases page](https://github.com/Cyletix/SyncMapRGCI/releases).
 - Keys: `→` / `Space` next, `←` previous, `N` speaker notes, `F` full screen. `#12` in the address opens slide 12.
-- Its diagrams are drawn by [`tools/deck_figures.py`](../tools/deck_figures.py); its result figures are the ones in `results/benchmark/` and `results/supp/`.
+- Their diagrams are drawn by [`tools/deck_figures.py`](../tools/deck_figures.py) (`f*.png` for the detailed deck, `b*.png` for the beginner deck); their result figures are the ones in `results/benchmark/` and `results/supp/`.
 
 ## Results
 

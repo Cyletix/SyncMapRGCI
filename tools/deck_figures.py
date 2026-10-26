@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Mechanism diagrams for the RG presentation (docs/presentation/), dark theme.
+"""Diagrams for the RG presentations in docs/presentation/ (expert and beginner decks), dark theme.
 
     python tools/deck_figures.py [--output docs/presentation/figures]
     python tools/deck_figures.py --bundle RG_presentation.html   # single-file copy for the release
+    python tools/deck_figures.py --bundle RG_beginner.html --deck beginner
+
+f*.png serve the expert deck (index.html), b*.png the beginner deck (beginner.html).
 
 Every diagram is drawn from the documented equations or from the public code paths it
 illustrates (the relation-graph panel runs the real ``_NSTransitionTracker``; the
@@ -618,24 +621,275 @@ def fig_ari_nmi(output: Path) -> None:
     save(fig, output, "f16_ari_vs_nmi.png")
 
 
+# ---------------------------------------------------------------- beginner deck (docs/presentation/beginner.html)
+
+def fig_b_chunking(output: Path) -> None:
+    fig, ax = canvas()
+    rows = [
+        (7.15, "Phone numbers", ["0", "9", "0", "1", "2", "3", "4", "5", "6", "7", "8"], "090 · 1234 · 5678", None),
+        (4.75, "Speech", ["pre", "tty", "ba", "by"], "pretty · baby", None),
+        (2.35, "Actions", ["reach", "grasp", "lift", "sip", "put down"], "having a drink", None),
+    ]
+    for y, label, items, chunked, _ in rows:
+        ax.text(0.6, y, label, fontsize=15, fontweight="bold", va="center", color=BLUE)
+        width = 0.46 if len(items) > 6 else (1.0 if len(items) == 4 else 1.15)
+        gap = 0.10
+        x = 3.0
+        centers = []
+        for it in items:
+            ax.add_patch(patches.FancyBboxPatch((x, y - 0.32), width, 0.64, boxstyle="round,pad=0.02,rounding_size=0.10",
+                                                facecolor=SURFACE, edgecolor=GRID, lw=1.2))
+            ax.text(x + width / 2, y, it, ha="center", va="center", fontsize=12 if width > 0.5 else 13)
+            centers.append(x + width / 2)
+            x += width + gap
+        arrow(ax, (x + 0.15, y), (x + 1.05, y), color=MUTED, width=2.2)
+        ax.text(x + 1.3, y, chunked, fontsize=16, fontweight="bold", va="center", color=GREEN)
+        if label == "Speech":
+            # within-word transitions are predictable, the one across the word boundary is not
+            for (a, b), txt, col, rad in [((0, 1), "predictable", GREEN, -0.5), ((1, 2), "unpredictable", RED, -0.5),
+                                          ((2, 3), "predictable", GREEN, -0.5)]:
+                ax.annotate("", xy=(centers[b], y + 0.36), xytext=(centers[a], y + 0.36),
+                            arrowprops={"arrowstyle": "-|>", "color": col, "lw": 1.6, "connectionstyle": f"arc3,rad={rad}"})
+                ax.text((centers[a] + centers[b]) / 2, y + 0.98, txt, ha="center", fontsize=9.5, color=col)
+            ax.text(3.0, y - 0.75, "8-month-old infants find such word boundaries from syllable statistics alone "
+                    "(Saffran, Aslin & Newport, 1996)", fontsize=10.5, color=MUTED)
+    ax.text(8.0, 0.85, "Chunking turns a long stream into a few reusable units, and units into bigger units.",
+            ha="center", fontsize=13)
+    save(fig, output, "b01_chunking_everyday.png")
+
+
+def fig_b_task(output: Path) -> None:
+    fig, ax = canvas()
+    letters = "ABCDEFGHI"
+    groups = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    gcol = [BLUE, ORANGE, GREEN]
+    pos = {}
+    for g, (cx, cy) in zip(groups, [(1.55, 5.75), (3.95, 5.75), (2.75, 3.55)]):
+        for k, node in enumerate(g):
+            a = np.pi / 2 + k * 2 * np.pi / 3
+            pos[node] = (cx + 0.62 * np.cos(a), cy + 0.62 * np.sin(a))
+    within = [(g[i], g[j]) for g in groups for i in range(3) for j in range(i + 1, 3)]
+    between = [(2, 3), (5, 6), (8, 0)]
+    for a, b in within + between:
+        ax.plot(*zip(pos[a], pos[b]), color=MUTED if (a, b) in within else GRID, lw=1.6, zorder=1)
+    for g, (cx, cy) in zip(groups, [(1.55, 5.75), (3.95, 5.75), (2.75, 3.55)]):
+        ax.add_patch(patches.Circle((cx, cy), 1.05, fill=False, edgecolor=GRAY, lw=1.3, ls="--"))
+    for node, p in pos.items():
+        ax.add_patch(patches.Circle(p, 0.26, facecolor=SURFACE, edgecolor=MUTED, lw=1.4, zorder=3))
+        ax.text(*p, letters[node], ha="center", va="center", fontsize=12, fontweight="bold", zorder=4)
+    ax.text(2.75, 7.75, "1  Hidden graph", ha="center", fontsize=15, fontweight="bold")
+    ax.text(2.75, 2.05, "dashed circles: hidden groups", ha="center", fontsize=10.5, color=MUTED)
+
+    # an actual random walk on that graph
+    nbrs = {n: [] for n in range(9)}
+    for a, b in within + between:
+        nbrs[a].append(b)
+        nbrs[b].append(a)
+    rng = np.random.default_rng(3)
+    walk = [0]
+    for _ in range(39):
+        walk.append(int(rng.choice(nbrs[walk[-1]])))
+    arrow(ax, (5.1, 4.9), (5.85, 4.9), color=MUTED, width=2.4)
+    ax.text(5.47, 5.25, "random\nwalk", ha="center", fontsize=9.5, color=MUTED)
+    ax.text(8.25, 7.75, "2  All the model sees", ha="center", fontsize=15, fontweight="bold")
+    for i, n in enumerate(walk):
+        r, c = divmod(i, 8)
+        x, y = 6.15 + c * 0.53, 6.6 - r * 0.62
+        ax.add_patch(patches.FancyBboxPatch((x, y), 0.44, 0.48, boxstyle="round,pad=0.01,rounding_size=0.06",
+                                            facecolor=SURFACE, edgecolor=GRID, lw=1.0))
+        ax.text(x + 0.22, y + 0.24, letters[n], ha="center", va="center", fontsize=11)
+    ax.text(8.25, 2.75, "one symbol at a time, no group labels,\nno number of groups", ha="center", fontsize=10.5, color=MUTED)
+
+    arrow(ax, (10.55, 4.9), (11.3, 4.9), color=MUTED, width=2.4)
+    ax.text(10.92, 5.25, "learn", ha="center", fontsize=9.5, color=MUTED)
+    ax.text(13.45, 7.75, "3  Recover the groups", ha="center", fontsize=15, fontweight="bold")
+    for g, col, (cx, cy) in zip(groups, gcol, [(12.4, 5.9), (14.5, 5.9), (13.45, 3.7)]):
+        ax.add_patch(patches.Circle((cx, cy), 0.95, facecolor=tint(col, 0.25), edgecolor=col, lw=1.6))
+        for k, node in enumerate(g):
+            a = np.pi / 2 + k * 2 * np.pi / 3
+            p = (cx + 0.48 * np.cos(a), cy + 0.48 * np.sin(a))
+            ax.add_patch(patches.Circle(p, 0.25, facecolor=col, edgecolor=BG, lw=1.4, zorder=3))
+            ax.text(*p, letters[node], ha="center", va="center", fontsize=11.5, fontweight="bold", zorder=4)
+    ax.text(13.45, 2.05, "symbols that keep appearing together\nend up together", ha="center", fontsize=10.5, color=MUTED)
+    ax.text(8.0, 0.85, "The only evidence is order: which symbols tend to follow which.", ha="center", fontsize=13)
+    save(fig, output, "b02_task_as_a_game.png")
+
+
+def fig_b_hierarchy(output: Path) -> None:
+    import re
+
+    fig, ax = canvas()
+    dot = (ROOT / "datasets" / "hierarchy" / "DCH1_fixed_chunk_6_3.dot").read_text(encoding="utf-8")
+    edges = re.findall(r"^\s*(\S+)\s*->\s*(\S+)", dot, flags=re.M)
+    children: dict[str, list[str]] = {}
+    for child, parent in edges:
+        children.setdefault(parent, []).append(child)
+    leaves = sorted({c for c, _ in edges if c.isdigit()}, key=int)
+    pos: dict[str, tuple[float, float]] = {leaf: (2.6 + 0.56 * i, 1.9) for i, leaf in enumerate(leaves)}
+
+    def place(node: str) -> tuple[float, float]:
+        if node not in pos:
+            kids = [place(k) for k in children[node]]
+            pos[node] = (sum(x for x, _ in kids) / len(kids), max(y for _, y in kids) + 1.75)
+        return pos[node]
+
+    place("root")
+    for child, parent in edges:
+        ax.plot(*zip(pos[child], pos[parent]), color=GRID, lw=1.6, zorder=1)
+    palette = [BLUE, ORANGE, GREEN, YELLOW, PINK, PURPLE]
+    for node, (x, y) in pos.items():
+        if node.isdigit():
+            dots(ax, [x], [y], palette[int(node) // 3], 150)
+        else:
+            dots(ax, [x], [y], MUTED, 110 if node != "root" else 170)
+    for y, text in [(1.9, "symbols"), (3.65, "chunks"), (5.4, "groups"), (7.15, "everything")]:
+        ax.text(2.2, y, text, ha="right", va="center", fontsize=12, color=MUTED)
+    ax.text(12.6, 3.65, "chunk = 3 symbols that\nfollow each other often", fontsize=12, va="center", color=INK)
+    ax.text(12.6, 5.4, "group = 3 chunks that\nfollow each other often", fontsize=12, va="center", color=INK)
+    ax.text(8.0, 0.75, "DCH1: 18 symbols → 6 chunks → 2 groups. The model only ever sees the bottom row.",
+            ha="center", fontsize=13)
+    save(fig, output, "b03_hierarchy_tree.png")
+
+
+def fig_b_scale(output: Path) -> None:
+    from scipy.cluster.hierarchy import fcluster, linkage
+
+    fig, ax = canvas()
+    rng = np.random.default_rng(5)
+    pts, chunk = [], []
+    for g, gc in enumerate([(-1.0, 0.0), (1.0, 0.0)]):
+        for k in range(3):
+            a = np.pi / 2 + k * 2 * np.pi / 3
+            cc = np.asarray(gc) + 0.42 * np.asarray([np.cos(a), np.sin(a)])
+            for _ in range(3):
+                pts.append(cc + rng.normal(0, 0.055, 2))
+                chunk.append(g * 3 + k)
+    pts = np.asarray(pts)
+    link = linkage(pts, method="single")
+    panels = [(0.02, "too fine", "nearly every symbol alone"), (0.25, "chunk scale", "6 chunks"),
+              (0.9, "group scale", "2 groups"), (3.0, "too coarse", "one blob")]
+    palette = [BLUE, ORANGE, GREEN, YELLOW, PINK, PURPLE, RED, GRAY]
+    for i, (radius, title_, note) in enumerate(panels):
+        ox = 2.0 + i * 4.0
+        labels = fcluster(link, t=radius, criterion="distance")
+        ax.add_patch(patches.FancyBboxPatch((ox - 1.75, 2.25), 3.5, 4.6, boxstyle="round,pad=0.02,rounding_size=0.12",
+                                            facecolor=SURFACE, edgecolor=GRID, lw=1.2))
+        for p, lab in zip(pts, labels):
+            col = palette[(lab - 1) % 8] if labels.max() <= 8 else MUTED
+            dots(ax, [ox + p[0] * 1.15], [4.55 + p[1] * 1.15], col, 70)
+        r_vis = min(radius, 1.2) * 1.15
+        ax.add_patch(patches.Circle((ox + 1.05, 6.25), max(r_vis / 2, 0.04), fill=False, edgecolor=MUTED, lw=1.2))
+        ax.text(ox, 7.45, title_, ha="center", fontsize=14, fontweight="bold",
+                color=GREEN if i in (1, 2) else MUTED)
+        ax.text(ox, 1.75, f"{note}  ({labels.max()} cluster{'s' if labels.max() > 1 else ''})", ha="center", fontsize=11, color=MUTED)
+    ax.text(8.0, 0.85, "The same map read at four scales. Each level needs its own scale, and the right one changes from graph to graph.",
+            ha="center", fontsize=12.5)
+    save(fig, output, "b04_choosing_the_scale.png")
+
+
+def fig_b_ari(output: Path) -> None:
+    fig, ax = canvas()
+    truth = np.repeat(np.arange(4), 6)
+    renamed = np.repeat([2, 0, 3, 1], 6)
+    rng = np.random.default_rng(1)
+    random_ = rng.integers(0, 4, truth.size)
+    merged = np.repeat([0, 0, 1, 2], 6)
+    palette = [BLUE, ORANGE, GREEN, PURPLE]
+    cases = [("same groups, other names", renamed), ("two chunks merged", merged), ("random groups", random_)]
+    for i, (name, pred) in enumerate(cases):
+        x0 = 0.9 + i * 5.1
+        ari = adjusted_rand_score(truth, pred)
+        ax.text(x0 + 2.0, 7.55, name, ha="center", fontsize=14.5, fontweight="bold")
+        for row, (lab, arr) in enumerate([("truth", truth), ("model", pred)]):
+            y = 5.9 - row * 0.85
+            ax.text(x0 - 0.15, y + 0.2, lab, ha="right", va="center", fontsize=10.5, color=MUTED)
+            for j, v in enumerate(arr):
+                ax.add_patch(patches.Rectangle((x0 + j * 0.168, y), 0.15, 0.42, facecolor=palette[int(v) % 4], edgecolor="none"))
+        ax.text(x0 + 2.0, 3.25, f"ARI = {ari:.2f}", ha="center", fontsize=24, fontweight="bold",
+                color=GREEN if ari > 0.9 else (YELLOW if ari > 0.3 else RED))
+    ax.text(8.0, 2.0, "ARI asks, for every pair of symbols: does the model put them together exactly when the truth does?",
+            ha="center", fontsize=13)
+    ax.text(8.0, 1.3, "1 = the same grouping (names do not matter) · about 0 = no better than chance", ha="center",
+            fontsize=12, color=MUTED)
+    save(fig, output, "b05_ari_intuition.png")
+
+
+def fig_b_recursion(output: Path) -> None:
+    import pandas as pd
+
+    df = pd.read_csv(ROOT / "results" / "supp" / "run_comparison.csv", low_memory=False)
+    df = df[(df["dataset_family"] == "hierarchy") & df["variant"].isin(["rg", "rg_l0"])]
+    cell = df.groupby(["dataset", "decay", "variant"])["late_mean_ari"].mean().reset_index()
+    fig, ax = plt.subplots(figsize=(9.6, 7.2), dpi=150)
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(BG)
+    decays = [0.25, 0.5, 0.75]
+    width = 0.36
+    for k, (variant, label) in enumerate([("rg", "RG, recursion on"), ("rg_l0", "RG, recursion off")]):
+        sub = cell[cell["variant"] == variant]
+        means = [sub[sub["decay"] == d]["late_mean_ari"].mean() for d in decays]
+        xs = np.arange(len(decays)) + (k - 0.5) * (width + 0.04)
+        ax.bar(xs, means, width, color=BLUE if k == 0 else SURFACE, edgecolor=BLUE, linewidth=2,
+               hatch=None if k == 0 else "//", label=label, zorder=2)
+        for x, m in zip(xs, means):
+            ax.text(x, m + 0.015, f"{m:.2f}", ha="center", va="bottom", fontsize=19, fontweight="bold", color=INK)
+    ax.set_xticks(np.arange(len(decays)), ["well\nseparated", "medium", "mixed"], fontsize=18, color=INK)
+    ax.set_xlabel("how much the big groups mix", fontsize=16, color=MUTED, labelpad=10)
+    ax.set_ylabel("hierarchy score, average of 4 graphs", fontsize=15, color=MUTED)
+    ax.tick_params(axis="y", labelsize=14)
+    ax.set_ylim(0, 0.75)
+    ax.grid(axis="y", color=GRID, alpha=0.7, zorder=0)
+    for s in ["top", "right"]:
+        ax.spines[s].set_visible(False)
+    leg = ax.legend(frameon=False, fontsize=17, loc="upper right")
+    for t in leg.get_texts():
+        t.set_color(INK)
+    fig.subplots_adjust(left=0.12, right=0.98, top=0.96, bottom=0.17)
+    save(fig, output, "b06_recursion_on_off.png")
+
+
+def fig_b_syncmap_final(output: Path) -> None:
+    """Final SyncMap map on DCH1 (seed 0): the static stand-in for the training GIF in print."""
+    import json
+
+    from tools.benchmark import CLASS_COLORS, CLASS_MARKERS, SURFACE as B_SURFACE, VIEW_AZIM, VIEW_ELEV, _style3d, _unit_cube
+
+    run = json.loads((ROOT / "results" / "benchmark" / "runs" / "DCH1__syncmap.json").read_text(encoding="utf-8"))
+    xyz = _unit_cube(run["positions"])
+    labels = run["true_label_levels"]["level_0"]
+    fig = plt.figure(figsize=(6.4, 6.4), dpi=150, facecolor=BG)
+    ax = fig.add_subplot(projection="3d")
+    _style3d(ax)
+    ax.view_init(elev=VIEW_ELEV, azim=VIEW_AZIM)
+    for rank, cls in enumerate(sorted(set(labels))):
+        idx = [i for i, c in enumerate(labels) if c == cls]
+        ax.scatter(xyz[idx, 0], xyz[idx, 1], xyz[idx, 2], s=60, marker=CLASS_MARKERS[rank % 8], color=CLASS_COLORS[rank % 8],
+                   edgecolors=B_SURFACE, linewidths=0.6, depthshade=False)
+    ax.set_title("SyncMap · DCH1 · after 100,000 steps", color=INK, fontsize=13, pad=0)
+    fig.subplots_adjust(left=0, right=1, top=0.94, bottom=0)
+    save(fig, output, "b07_syncmap_final.png")
+
+
 FIGURES = [fig_cover, fig_syncmap, fig_heatmaps, fig_lineage, fig_kernel, fig_observation, fig_relation_graph,
            fig_primitive, fig_spring, fig_separations, fig_tokenization, fig_scale_ladder, fig_cadence,
-           fig_macro_feedback, fig_readout, fig_ari_nmi]
+           fig_macro_feedback, fig_readout, fig_ari_nmi,
+           fig_b_chunking, fig_b_task, fig_b_hierarchy, fig_b_scale, fig_b_ari, fig_b_recursion, fig_b_syncmap_final]
 
 
 def bundle(deck: Path, target: Path) -> None:
-    """Write a single-file copy of the deck with every image inlined (the release asset)."""
+    """Write a single-file copy of a deck with every image inlined (the release asset)."""
     import base64
     import re
 
     html = deck.read_text(encoding="utf-8")
+    mime = {".png": "image/png", ".gif": "image/gif"}
 
     def inline(match: re.Match[str]) -> str:
         path = (deck.parent / match.group(1)).resolve()
         data = base64.b64encode(path.read_bytes()).decode("ascii")
-        return f'src="data:image/png;base64,{data}"'
+        return f'src="data:{mime[path.suffix]};base64,{data}"'
 
-    target.write_text(re.sub(r'src="([^"]+\.png)"', inline, html), encoding="utf-8")
+    target.write_text(re.sub(r'src="([^"]+\.(?:png|gif))"', inline, html), encoding="utf-8")
     print("wrote", target, f"({target.stat().st_size / 1e6:.1f} MB)")
 
 
@@ -643,10 +897,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--bundle", type=Path, default=None,
-                        help="instead of drawing, write docs/presentation/index.html as one self-contained HTML file here")
+                        help="instead of drawing, write the deck chosen by --deck as one self-contained HTML file here")
+    parser.add_argument("--deck", choices=["index", "beginner"], default="index",
+                        help="which deck to bundle: index (expert version) or beginner")
     args = parser.parse_args()
     if args.bundle is not None:
-        bundle(ROOT / "docs" / "presentation" / "index.html", args.bundle.resolve())
+        bundle(ROOT / "docs" / "presentation" / f"{args.deck}.html", args.bundle.resolve())
         return
     for fig in FIGURES:
         fig(args.output.resolve())

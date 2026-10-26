@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RG for Newcomers</title>
+<meta name="description" content="An introduction to RG for readers without a SyncMap background: why chunking matters, the task, the idea, and what the experiments showed.">
+<style>
+:root {
+  --bg: #0d0f14; --surface: #161a26; --surface-2: #1c2130; --line: #2f3a56;
+  --ink: #f2f2f2; --ink-2: #b0b5c7; --ink-3: #7d849a;
+  --rg: #3987e5; --nsgd: #d95926; --syncmap: #199e70; --symmetric: #c98500; --tsf: #d55181; --violet: #9085e9; --red: #e66767;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --mono: "Cascadia Code", "Consolas", "SFMono-Regular", Menlo, monospace;
+  --serif: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+body { overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: center center; }
+section.slide { position: absolute; inset: 0; display: none; flex-direction: column; padding: 46px 64px 54px; background: var(--bg); overflow: hidden; }
+section.slide.active { display: flex; }
+.kicker { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+h1 { font-size: 54px; line-height: 1.08; margin: 0 0 18px; font-weight: 700; }
+h2 { font-size: 34px; line-height: 1.15; margin: 0 0 20px; font-weight: 650; }
+h3 { font-size: 21px; margin: 0 0 10px; color: var(--ink); }
+p, li { font-size: 22px; line-height: 1.42; color: var(--ink); }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 12px; padding-left: 26px; }
+li { margin-bottom: 8px; }
+li::marker { color: var(--ink-3); }
+.muted { color: var(--ink-2); }
+.small, .small li, .small p { font-size: 17px; }
+.tiny { font-size: 14px; color: var(--ink-3); }
+.body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; flex: 1; min-height: 0; }
+.cols.w60 { grid-template-columns: 1.5fr 1fr; }
+.cols.w40 { grid-template-columns: 1fr 1.5fr; }
+.fig { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.fig img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.caption { font-size: 15px; color: var(--ink-2); margin-top: 8px; text-align: center; }
+.take { margin-top: 12px; padding: 12px 18px; border-left: 4px solid var(--rg); background: var(--surface); border-radius: 0 8px 8px 0; font-size: 19px; line-height: 1.4; }
+.take.warn { border-left-color: var(--red); }
+.take.ok { border-left-color: var(--syncmap); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; }
+.card h3 { margin-top: 0; }
+.math { font-family: var(--serif); font-size: 26px; text-align: center; margin: 12px 0 18px; color: var(--ink); }
+.math i { font-style: italic; }
+.math.left { text-align: left; }
+code, .code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; color: #d6d9e4; }
+pre { font-family: var(--mono); font-size: 14.5px; line-height: 1.45; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin: 0 0 12px; white-space: pre-wrap; color: #d6d9e4; }
+table { border-collapse: collapse; width: 100%; font-size: 17px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { color: var(--ink-2); font-weight: 600; font-size: 15px; }
+th:first-child, td:first-child { text-align: left; }
+td.l, th.l { text-align: left; white-space: normal; }
+td b { color: var(--ink); }
+tr.hl td { background: rgba(57,135,229,.08); }
+.best { font-weight: 700; color: var(--ink); }
+.dim { color: var(--ink-3); }
+.sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+.tag { display: inline-block; font-size: 13px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); margin-right: 6px; }
+.footer { position: absolute; left: 64px; right: 64px; bottom: 18px; display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-3); }
+.title-slide { justify-content: center; }
+.title-slide .sub { font-size: 26px; color: var(--ink-2); margin-bottom: 36px; }
+.section-slide { justify-content: center; }
+.section-slide h1 { font-size: 60px; }
+.section-slide .num { font-size: 20px; color: var(--rg); letter-spacing: .1em; margin-bottom: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+aside.notes { display: none; }
+#notes { position: fixed; left: 0; right: 0; bottom: 0; max-height: 34vh; overflow: auto; background: rgba(22,26,38,.97); border-top: 1px solid var(--line); padding: 14px 28px; font-size: 16px; line-height: 1.5; color: var(--ink); display: none; z-index: 5; }
+#notes.on { display: block; }
+#notes h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+#hud { position: fixed; right: 14px; top: 10px; display: flex; gap: 6px; z-index: 6; opacity: 0; transition: opacity .3s; }
+#hud.show, #hud:hover { opacity: 1; }
+#hud button { background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font: 13px var(--sans); cursor: pointer; }
+@media print {
+  @page { size: 1280px 720px; margin: 0; }
+  html, body { overflow: visible; height: auto; background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #stage { position: static; transform: none !important; width: 1280px; height: auto; }
+  section.slide { position: relative; display: flex !important; width: 1280px; height: 720px; page-break-after: always; break-after: page; }
+  #notes, #hud { display: none !important; }
+}
+.print-only { display: none; }
+@media print { .screen-only { display: none !important; } .print-only { display: block !important; } }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- ============================================================ Opening -->
+<section class="slide title-slide" data-section="Opening">
+  <div class="kicker">SyncMapRGCI · introduction for newcomers</div>
+  <h1>Finding groups inside groups</h1>
+  <div class="sub">How a self-organizing map learns hierarchical chunks<br>from a stream of symbols — no background needed</div>
+  <p class="muted small">Laboratory of Intelligent Systems, Kyushu University · October 2026<br>The detailed version for SyncMap readers is <code>docs/presentation/index.html</code> in <code>github.com/Cyletix/SyncMapRGCI</code></p>
+  <aside class="notes">This version assumes no background in SyncMap or in this project. It explains the problem with everyday examples, then the idea of SyncMap and of my extension RG, then what the experiments showed. Mechanism details, parameters and commands are in the backup slides at the end, and in the detailed version of the deck.</aside>
+</section>
+
+<section class="slide" data-section="Opening">
+  <div class="kicker">Plan</div>
+  <h2>Four questions</h2>
+  <div class="grid2" style="margin-top:10px">
+    <div class="card"><h3>1 · Why group a sequence at all?</h3><p class="small">People do it constantly, and babies learn words this way.</p></div>
+    <div class="card"><h3>2 · What exactly is the task?</h3><p class="small">A hidden graph, a random walk, and groups to recover without labels.</p></div>
+    <div class="card"><h3>3 · How does SyncMap do it, and what does RG add?</h3><p class="small">Points that move like magnets; then the same trick repeated one level up.</p></div>
+    <div class="card"><h3>4 · Does it work?</h3><p class="small">A fair comparison of five methods: where RG helps, where it does not, and what it costs.</p></div>
+  </div>
+  <aside class="notes">Keep the four questions in mind; every later slide answers one of them.</aside>
+</section>
+
+<!-- ============================================================ Background -->
+<section class="slide section-slide" data-section="Background">
+  <div class="num">PART 1</div>
+  <h1>Why chunks?</h1>
+  <p class="muted">A long stream becomes manageable once it is cut into pieces that repeat.</p>
+</section>
+
+<section class="slide" data-section="Background">
+  <div class="kicker">Everyday chunking</div>
+  <h2>We cut sequences into pieces without thinking</h2>
+  <div class="fig"><img src="figures/b01_chunking_everyday.png" alt="Three examples: a phone number read as 090, 1234, 5678; the syllables pre, tty, ba, by heard as pretty baby; the actions reach, grasp, lift, sip, put down seen as having a drink."></div>
+  <aside class="notes">A phone number is easier to remember as three blocks than as eleven digits. In speech nobody marks where one word ends; listeners find the boundaries anyway. In a famous experiment, eight-month-old infants listened to a stream of made-up words for two minutes and afterwards could tell the "words" from random syllable triples. The only cue was statistical: inside a word the next syllable is predictable, across a word boundary it is not. Actions work the same way: many small movements become one event. Chunks can then be grouped again into bigger chunks: syllables into words, words into phrases. That nesting is what this project is about.</aside>
+</section>
+
+<section class="slide" data-section="Background">
+  <div class="kicker">The task</div>
+  <h2>The task as a game: recover the groups from the order alone</h2>
+  <div class="fig"><img src="figures/b02_task_as_a_game.png" alt="Left: a hidden graph of nine nodes in three groups. Middle: the letter sequence produced by a random walk, which is all the model sees. Right: the three recovered groups."></div>
+  <aside class="notes">This is the whole problem in one picture. Someone draws a graph whose nodes form groups: inside a group nodes are densely connected, between groups there are only a few links. A random walker moves along the links and calls out the name of each node it visits. We only hear the sequence of names. The goal is to say which names belong together, without being told the groups or even how many there are. The only evidence is order: which symbols tend to follow which. In our experiments the graphs have 18 to 300 nodes and the sequence is 100,000 symbols long.</aside>
+</section>
+
+<section class="slide" data-section="Background">
+  <div class="kicker">Hierarchy</div>
+  <h2>Groups inside groups</h2>
+  <div class="fig"><img src="figures/b03_hierarchy_tree.png" alt="Tree of the DCH1 graph: 18 symbols form 6 chunks of three, which form 2 groups of three chunks."></div>
+  <aside class="notes">Real structure is rarely flat. In this example graph, DCH1, the 18 symbols form 6 chunks, and the chunks form 2 bigger groups. The walk stays inside a chunk most of the time, sometimes moves to a neighbouring chunk of the same group, and only rarely jumps to the other group. A good method should recover both levels: the 6 chunks and the 2 groups. The model only ever sees the bottom row, one symbol at a time.</aside>
+</section>
+
+<section class="slide" data-section="Background">
+  <div class="kicker">Difficulty</div>
+  <h2>Why this is hard</h2>
+  <div class="grid2" style="margin-top:6px">
+    <div class="card"><h3>No labels</h3><p class="small">Nobody tells the model which symbols belong together; there is nothing to train against.</p></div>
+    <div class="card"><h3>Unknown number of groups</h3><p class="small">The model must decide by itself whether there are 2 groups or 20.</p></div>
+    <div class="card"><h3>Each level has its own scale</h3><p class="small">Chunks are small and tight, groups are large and loose. One distance cannot describe both.</p></div>
+    <div class="card"><h3>Groups mix</h3><p class="small">The walk also crosses between groups, so the boundaries are statistical, not sharp.</p></div>
+  </div>
+  <div class="take">The third point turns out to be the central one.</div>
+  <aside class="notes">Each of these alone is manageable; together they make the problem hard. The next slide shows why the scale is the key difficulty.</aside>
+</section>
+
+<section class="slide" data-section="Background">
+  <div class="kicker">The key difficulty</div>
+  <h2>The hard part is choosing the scale, not the clustering method</h2>
+  <div class="fig" style="flex:0 0 420px"><img src="figures/b04_choosing_the_scale.png" alt="The same 18 points read at four distance scales: too fine gives almost every point alone, the chunk scale gives 6 chunks, the group scale gives 2 groups, too coarse gives one blob."></div>
+  <ul class="small">
+    <li>Swapping the clustering method does not fix this: Louvain was much slower than DBSCAN and not better in general.</li>
+    <li>In our experiments, even when the map already contained the groups, picking the cut scale cost 0.07–0.40 of the score.</li>
+  </ul>
+  <aside class="notes">A common question is why we do not simply use a classical community-detection method such as Louvain. I tried Louvain in place of DBSCAN: it was much slower and only better on a few specific datasets, and in general no clustering method had a special advantage. The core issue is whether the method can decide the right scale by itself, and that scale depends on the graph. Our experiments confirm it: when the reading step is told the true number of groups, the score of the very same map rises by 0.07 to 0.40. The structure was already there; the scale choice lost it. That is why RG fixes the scale inside the dynamics, level by level, instead of searching for a better clustering method.</aside>
+</section>
+
+<section class="slide section-slide" data-section="Idea">
+  <div class="num">PART 2</div>
+  <h1>The idea</h1>
+  <p class="muted">SyncMap in one sentence, its limit, and what RG adds.</p>
+</section>
+
+<section class="slide" data-section="Idea">
+  <div class="kicker">SyncMap</div>
+  <h2>SyncMap: what occurs together attracts</h2>
+  <div class="cols w60">
+    <div class="fig"><img class="screen-only" src="../../results/benchmark/gifs/DCH1__syncmap.gif" alt="Animation of SyncMap's 3-D map during training on DCH1: points start scattered and settle into clumps, coloured by their true chunk."><img class="print-only" src="figures/b07_syncmap_final.png" alt="SyncMap's 3-D map on DCH1 after 100,000 steps, coloured by true chunk: two clumps."></div>
+    <div>
+      <ul class="small">
+        <li>Each symbol is a point in a small 3-D space.</li>
+        <li>Whenever symbols appear together, their points move toward each other; the points that did not appear move apart.</li>
+        <li>Like magnets settling: after many steps, points that often occur together sit close together.</li>
+        <li>A clustering step then reads the clumps as groups.</li>
+        <li>No loss function and no backpropagation: just simple forces applied again and again.</li>
+      </ul>
+      <p class="tiny">Vargas &amp; Asabuki, AAAI 2021. SyncMap on DCH1 (animated on screen, final map in print); colours = true chunk, shown for viewers only.</p>
+    </div>
+  </div>
+  <aside class="notes">SyncMap was proposed in our lab. It does not train a neural network to minimise an error. Instead every symbol is a point, and each new observation nudges the points: those active together are pulled toward each other, the others are pushed away. Over 100,000 steps the arrangement settles, and points of the same chunk end up close. The animation shows SyncMap on the DCH1 example: the points settle into clumps. Notice that it finds the two big groups, but the chunks inside each group run together; the next slide is about exactly that.</aside>
+</section>
+
+<section class="slide" data-section="Idea">
+  <div class="kicker">The limit</div>
+  <h2>One map, one scale: hierarchies come out half right</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/latent_EC.png" alt="Final 3-D maps of five methods on the EC graph, coloured by true chunk. SyncMap, Symmetric and NSGD form two separated groups with most chunks inside merged; TSFMap separates the chunks but spreads them evenly over a sphere with no groups; RG keeps two groups with partly separated chunks."></div>
+  <div class="cols" style="flex:0 0 auto;margin-top:8px">
+    <p class="small">SyncMap, Symmetric and NSGD get the two big groups but merge most of the 15 small chunks inside them.</p>
+    <p class="small">TSFMap does the opposite: it separates the chunks but spreads them evenly over a sphere, so the two groups disappear.</p>
+  </div>
+  <aside class="notes">These are the actual 3-D maps of five methods on a graph with 15 chunks in 2 groups, after 100,000 steps. Each map has one natural distance. If points of a chunk are pulled tight, the gaps between chunks of the same group and between groups look alike, or the chunks merge. Getting both the small and the large distances right in one map is what fails. RG's idea is to stop asking one map to do both.</aside>
+</section>
+
+<section class="slide" data-section="Idea">
+  <div class="kicker">RG</div>
+  <h2>RG: treat each chunk as a new symbol and repeat, one level up</h2>
+  <div class="fig"><img src="figures/f11_recursive_tokenization.png" alt="Three panels: level 0 points, the same points circled into level-1 chunks, and chunks enclosed into level-2 groups."></div>
+  <ul class="small">
+    <li>Level 0 runs the SyncMap-style dynamics on the symbols and finds chunks.</li>
+    <li>Each stable chunk becomes a new symbol; the chunk sequence feeds the same dynamics one level up, at a larger scale and a slower pace.</li>
+    <li>Like zooming a map out: streets, then districts, then cities, each at its own scale.</li>
+  </ul>
+  <aside class="notes">RG stands for Recursive Grouping. The word recursive is the whole idea: whatever the first level finds becomes the input of the next level, which runs exactly the same rules with a 3.16 times larger natural distance and a slower clock. Upper levels also feed back to level 0 and keep the coarse groups apart there. So each level only has to get one scale right. How the levels are scheduled and the exact factor are in the backup slides.</aside>
+</section>
+
+<!-- ============================================================ Checking -->
+<section class="slide section-slide" data-section="How we check">
+  <div class="num">PART 3</div>
+  <h1>How we check</h1>
+  <p class="muted">A score for a grouping, and a fair way to compare methods.</p>
+</section>
+
+<section class="slide" data-section="How we check">
+  <div class="kicker">Scoring</div>
+  <h2>Scoring a grouping: ARI, from 1 (perfect) down to about 0 (chance)</h2>
+  <div class="fig"><img src="figures/b05_ari_intuition.png" alt="Three toy cases with 24 symbols in 4 chunks: the same grouping with other names scores ARI 1.00, two chunks merged scores 0.68, random groups score about 0."></div>
+  <div class="take">For a hierarchy we score every level separately and take the average.</div>
+  <aside class="notes">The score is the adjusted Rand index. Look at every pair of symbols: does the model put them in the same group exactly when the truth does? Group names do not matter, so a correct grouping with different names scores 1. Merging two chunks gives partial credit. A random grouping scores about zero, it can even be slightly negative. For a hierarchy like DCH1 we compute this for the chunk level and the group level and average the two.</aside>
+</section>
+
+<section class="slide" data-section="How we check">
+  <div class="kicker">A fair test</div>
+  <h2>Five methods, the same input, the same reading step</h2>
+  <div class="cols" style="align-items:start">
+    <ul class="small">
+      <li>Every method reads the same 100,000-symbol sequence.</li>
+      <li>Every experiment is repeated with 5 different random walks; we report the average and the spread.</li>
+      <li>The same reading step turns every method's map into groups; the true labels are used only for the score.</li>
+      <li>To see what the recursion itself does, we also ran RG with the recursion switched off and compared.</li>
+    </ul>
+    <table style="font-size:16.5px">
+      <tr><th class="l">Method</th><th class="l">In one line</th></tr>
+      <tr><td class="l"><span class="sw" style="background:var(--syncmap)"></span>SyncMap</td><td class="l">the original (2021)</td></tr>
+      <tr><td class="l"><span class="sw" style="background:var(--symmetric)"></span>Symmetric</td><td class="l">SyncMap variant for uneven group sizes</td></tr>
+      <tr><td class="l"><span class="sw" style="background:var(--tsf)"></span>TSFMap</td><td class="l">related dynamics with a built-in hierarchy reader</td></tr>
+      <tr><td class="l"><span class="sw" style="background:var(--nsgd)"></span>NSGD</td><td class="l">my earlier, strongest single-level method</td></tr>
+      <tr><td class="l"><span class="sw" style="background:var(--rg)"></span>RG</td><td class="l">this work: the recursive version</td></tr>
+    </table>
+  </div>
+  <aside class="notes">A comparison is only fair if everyone gets the same data and is judged the same way. All methods see the same sequences, the same five random walks, and the same reading step. NSGD deserves a word: it is my own earlier method, a single-level system that is very strong on some graphs, so RG has to beat a strong baseline, not only the original SyncMap.</aside>
+</section>
+
+<!-- ============================================================ Results -->
+<section class="slide section-slide" data-section="Results">
+  <div class="num">PART 4</div>
+  <h1>What we found</h1>
+  <p class="muted">No universal winner — but a clear place where RG helps, and a clear reason why.</p>
+</section>
+
+<section class="slide" data-section="Results">
+  <div class="kicker">Overall</div>
+  <h2>Eight test graphs: no single winner</h2>
+  <div class="fig"><img src="../../results/benchmark/figures/comparison_ari.png" alt="Bar chart of the score of five methods on eight graphs, average and spread over five repeats."></div>
+  <div class="cols" style="flex:0 0 auto;margin-top:6px">
+    <p class="small">RG is best on 3 graphs, NSGD on 3, the others on 1 each; several "wins" are within the spread of the repeats.</p>
+    <p class="small">On these small hierarchies most methods find the big groups; RG's lead comes from the small chunks inside them.</p>
+  </div>
+  <aside class="notes">Each group of bars is one test graph, each colour one method, and the thin lines show how much the score varies between the five repeats. RG has the best average on three graphs and NSGD on three. The lesson is that the answer depends on the structure of the graph. This made me look for harder hierarchies, where the big groups are not so easy to find.</aside>
+</section>
+
+<section class="slide" data-section="Results">
+  <div class="kicker">Where RG wins</div>
+  <h2>When the big groups mix, NSGD loses them and RG keeps them</h2>
+  <div class="fig"><img src="../../results/supp/figures/latent_H4x4x5.png" alt="3-D maps of NSGD, RG with recursion off and RG on an 80-symbol graph with 4 groups, top row with well separated groups, bottom row with mixed groups."></div>
+  <p class="small muted" style="margin-top:4px;text-align:center">80 symbols in 16 chunks inside 4 big groups (colours). Top row: big groups well separated (decay 0.25). Bottom row: big groups mixed (decay 0.75).</p>
+  <aside class="notes">A harder graph: 80 symbols in 16 chunks inside 4 groups, colours show the 4 groups. Top row: groups well separated. Bottom row: the walk jumps between groups much more often. NSGD shrinks each group to a point when things are easy, and loses the groups entirely when they mix. RG still places the 4 groups apart in the mixed case. Over three such graphs at the hardest setting, NSGD falls to 0.06 to 0.10 while RG keeps 0.17 to 0.42, on every one of the five repeats.</aside>
+</section>
+
+<section class="slide" data-section="Results">
+  <div class="kicker">Why</div>
+  <h2>The recursion is what helps</h2>
+  <div class="cols w60">
+    <div class="fig"><img src="figures/b06_recursion_on_off.png" alt="Bar chart: RG with recursion on scores higher than with recursion off at all three mixing levels, and the gap grows as groups mix."></div>
+    <ul class="small">
+      <li>Same method, same data, recursion switched off: worse in all 12 tests (4 graphs × 3 mixing levels).</li>
+      <li>The gap grows as the groups mix: from less than 0.1 to about 0.24 on average.</li>
+      <li>Without the recursion, RG collapses on the larger mixed graphs just like NSGD.</li>
+    </ul>
+  </div>
+  <aside class="notes">To be sure the gain comes from the new idea and not from something else in RG, we switched off only the recursion: no chunks become new symbols, no upper levels, no feedback. Everything else stayed identical. The recursive version wins every one of the twelve comparisons, and most clearly where the groups mix, which is exactly the situation it was designed for.</aside>
+</section>
+
+<section class="slide" data-section="Results">
+  <div class="kicker">Honest limits</div>
+  <h2>What it costs, and where it does not help</h2>
+  <div class="grid2">
+    <div class="card"><h3>Slower</h3><p class="small">RG takes about 3–4× NSGD's time on flat graphs and 10–20× on hierarchies, because it runs several levels.</p></div>
+    <div class="card"><h3>Not everywhere</h3><p class="small">With many small groups (e.g. 60 groups of 5) NSGD is perfect and RG is weak; NSGD also wins a three-level graph with clearly separated levels.</p></div>
+    <div class="card"><h3>The reading step</h3><p class="small">Turning a map into groups still loses 0.07–0.40 of the score for every method.</p></div>
+    <div class="card"><h3>Toy data</h3><p class="small">Only synthetic random walks so far; no images or video yet, and the deepest levels get too little input in 100,000 steps.</p></div>
+  </div>
+  <aside class="notes">These limits matter as much as the wins. RG is not a better clustering algorithm in general; it is a bias toward nested structure, and it pays for that in compute time. Flat graphs with few large groups favour RG, many small groups favour NSGD; the detailed numbers are in the backup slides.</aside>
+</section>
+
+<section class="slide" data-section="Results">
+  <div class="kicker">Next</div>
+  <h2>Where this is going</h2>
+  <div class="grid3">
+    <div class="card"><h3>Better reading step</h3><p class="small">Pick the cut scale from groups that stay stable over time, so less of the map's structure is lost.</p></div>
+    <div class="card"><h3>Causality between chunks</h3><p class="small">Once chunks are found, ask which ones cause which: the CI part of the project.</p></div>
+    <div class="card"><h3>Real data</h3><p class="small">Move from symbol streams to visual event sequences: the long-term research theme.</p></div>
+  </div>
+  <aside class="notes">The research theme is visual causal inference through hierarchical chunking. Chunking is the first half; the second half is to find directed, causal relations between the chunks, which currently exists only as early experiments.</aside>
+</section>
+
+<section class="slide title-slide" data-section="Results">
+  <div class="kicker">Summary</div>
+  <h1 style="font-size:44px">Three things to remember</h1>
+  <ol style="margin-top:6px">
+    <li>Grouping a sequence without labels is mostly a question of scale: each level of a hierarchy needs its own.</li>
+    <li>RG repeats SyncMap's simple attract-and-repel rule one level up, treating each chunk as a new symbol.</li>
+    <li>That recursion is what keeps mixed groups apart; it costs time and does not win everywhere.</li>
+  </ol>
+  <p class="small muted" style="margin-top:22px">Detailed deck: <code>docs/presentation/index.html</code> · code and results: <code>github.com/Cyletix/SyncMapRGCI</code></p>
+  <aside class="notes">Questions are welcome; the backup slides cover the mechanism, the full results and a glossary.</aside>
+</section>
+
+<!-- ============================================================ Backup -->
+<section class="slide section-slide" data-section="Backup">
+  <div class="num">BACKUP</div>
+  <h1>Details on request</h1>
+  <p class="muted">Results in full, inside RG, glossary, where to find everything.</p>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Flat graphs</div>
+  <h2>Few large groups favour RG, many small groups favour NSGD</h2>
+  <div class="fig"><img src="../../results/supp/figures/orientation_sweep.png" alt="Score against the number of groups at a fixed 300 symbols: RG best from 3 groups of 100 to 20 groups of 15, NSGD best from 30 groups of 10 and perfect at 60 groups of 5."></div>
+  <aside class="notes">All seven graphs have 300 symbols; only the split into groups changes. RG beats NSGD on every repeat from 3 groups of 100 up to 15 groups of 20. NSGD takes over from 30 groups of 10 and is perfect at 60 groups of 5.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Hierarchies</div>
+  <h2>Four hierarchies, three mixing levels</h2>
+  <div class="fig"><img src="../../results/supp/figures/hierarchy_difficulty.png" alt="Hierarchy score of NSGD, RG and RG with recursion off on four hierarchy graphs as the groups mix more."></div>
+  <aside class="notes">Left to right: graphs with 18, 48, 80 and 108 symbols; along each axis the big groups mix more. RG with recursion is the solid blue line, recursion off the dashed one, NSGD orange. The full table, with the reading-step analysis, is in results/supp/REPORT.md.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Inside RG · 1</div>
+  <h2>Remembering which symbols follow which</h2>
+  <div class="fig"><img src="figures/f07_relation_graph.png" alt="A stream of active symbol sets becomes a matrix of how often pairs follow each other, then a sparse graph with weighted links."></div>
+  <aside class="notes">Besides the immediate attract-and-repel force, RG keeps a slowly fading memory of which symbols follow each other. The strongest pairs become springs between points. This is memory built from the stream itself, not the hidden graph's true links.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Inside RG · 2</div>
+  <h2>Springs with a preferred length</h2>
+  <div class="fig"><img src="figures/f09_spring_curve.png" alt="Spring force against distance: strong push when too close, zero at the preferred length, pull when too far."></div>
+  <aside class="notes">Each remembered link acts like a spring with a preferred length: too close pushes apart, too far pulls together. This stops all points from collapsing into one spot, a known problem of the original SyncMap.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Inside RG · 3</div>
+  <h2>Each level 3.16× larger and slower</h2>
+  <div class="fig"><img src="figures/f12_scale_ladder.png" alt="Scale ladder: natural length 1, 3.16, 10, 31.6, 100 for levels 0 to 4, with memory growing ten times per level."></div>
+  <aside class="notes">3.16 is the square root of 10: two levels make one factor of ten. Memory grows tenfold per level because higher levels must collect slower evidence. Known limitation: the default scheduler makes the deep levels fire far less often than intended, so within 100,000 steps the levels above the first get little input.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Inside RG · 4</div>
+  <h2>Keeping big groups apart</h2>
+  <div class="fig"><img src="figures/f14_macro_feedback.png" alt="Upper-level groups feed back to level 0: links across groups are weakened, and groups that come too close are moved apart as wholes."></div>
+  <aside class="notes">The upper levels tell level 0 which coarse group each symbol belongs to. Links that cross groups are weakened, and when two groups come too close they are pushed apart as wholes. This is how the recursion keeps mixed groups separated.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Glossary</div>
+  <h2>Words used in this project</h2>
+  <table style="font-size:17px">
+    <tr><th class="l">Word</th><th class="l">Meaning here</th></tr>
+    <tr><td class="l">chunk</td><td class="l">a group of symbols that follow each other often</td></tr>
+    <tr><td class="l">hierarchy, level</td><td class="l">chunks grouped again into bigger groups; each grouping step is a level</td></tr>
+    <tr><td class="l">map, latent space</td><td class="l">the 3-D space where every symbol is a point</td></tr>
+    <tr><td class="l">reading step (readout)</td><td class="l">turning the map into groups, e.g. with DBSCAN</td></tr>
+    <tr><td class="l">ARI</td><td class="l">agreement between two groupings: 1 identical, about 0 chance</td></tr>
+    <tr><td class="l">seed, repeat</td><td class="l">one random walk; we use 5 and average</td></tr>
+    <tr><td class="l">recursion</td><td class="l">feeding the found chunks back in as new symbols, one level up</td></tr>
+    <tr><td class="l">mixing</td><td class="l">how often the walk jumps between big groups</td></tr>
+  </table>
+  <aside class="notes">The detailed deck uses the technical terms; this table maps them to the plain words used here.</aside>
+</section>
+
+<section class="slide" data-section="Backup">
+  <div class="kicker">Where to find everything</div>
+  <h2>Code, data and reports</h2>
+  <ul class="small">
+    <li>Repository: <code>github.com/Cyletix/SyncMapRGCI</code> (README also in Chinese and Japanese).</li>
+    <li>Detailed presentation: <code>docs/presentation/index.html</code>; both decks also as PDF on the releases page.</li>
+    <li>Benchmark of the five methods: <code>results/benchmark/REPORT.md</code>, with training animations.</li>
+    <li>Harder tests and the recursion comparison: <code>results/supp/REPORT.md</code>.</li>
+    <li>Run one experiment yourself:</li>
+  </ul>
+<pre>python main.py --task 0 --profile rg --dataset hierarchy/DCH1_fixed_chunk_6_3.dot --steps 100000 --seed 0 --save-gif true</pre>
+  <aside class="notes">Everything shown in this deck is generated from the public repository.</aside>
+</section>
+
+</div>
+
+<div id="notes"><h4>Speaker notes</h4><div id="notes-body"></div></div>
+<div id="hud"><button id="prev" aria-label="Previous slide">‹</button><button id="count" aria-label="Slide number">1</button><button id="next" aria-label="Next slide">›</button><button id="notes-btn" aria-label="Toggle speaker notes">notes</button></div>
+
+<script>
+(function () {
+  const stage = document.getElementById("stage");
+  const slides = Array.from(document.querySelectorAll("section.slide"));
+  const total = slides.length;
+  slides.forEach((s, k) => {
+    const f = document.createElement("div");
+    f.className = "footer";
+    f.innerHTML = "<span>RG for newcomers" + (s.dataset.section ? " · " + s.dataset.section : "") + "</span><span>" + (k + 1) + " / " + total + "</span>";
+    s.appendChild(f);
+  });
+  const notes = document.getElementById("notes");
+  const notesBody = document.getElementById("notes-body");
+  let i = Math.min(Math.max(parseInt(location.hash.slice(1), 10) - 1 || 0, 0), total - 1);
+  function fit() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+  }
+  function show(n) {
+    i = Math.min(Math.max(n, 0), total - 1);
+    slides.forEach((s, k) => s.classList.toggle("active", k === i));
+    const a = slides[i].querySelector("aside.notes");
+    notesBody.innerHTML = a ? a.innerHTML : "<span style='color:var(--ink-3)'>No notes for this slide.</span>";
+    document.getElementById("count").textContent = (i + 1) + " / " + total;
+    if (location.hash !== "#" + (i + 1)) history.replaceState(null, "", "#" + (i + 1));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+    const k = e.key;
+    if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "Enter") { e.preventDefault(); show(i + 1); }
+    else if (k === "ArrowLeft" || k === "PageUp" || k === "Backspace") { e.preventDefault(); show(i - 1); }
+    else if (k === "Home") show(0);
+    else if (k === "End") show(total - 1);
+    else if (k === "n" || k === "N") notes.classList.toggle("on");
+    else if (k === "f" || k === "F") { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen(); }
+  });
+  document.getElementById("prev").onclick = () => show(i - 1);
+  document.getElementById("next").onclick = () => show(i + 1);
+  document.getElementById("notes-btn").onclick = () => notes.classList.toggle("on");
+  window.addEventListener("hashchange", () => show((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  const hud = document.getElementById("hud");
+  let hudTimer = 0;
+  document.addEventListener("mousemove", () => {
+    hud.classList.add("show");
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(() => hud.classList.remove("show"), 1800);
+  });
+  window.addEventListener("resize", fit);
+  fit();
+  show(i);
+})();
+</script>
+</body>
+</html>

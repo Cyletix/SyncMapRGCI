@@ -15,7 +15,7 @@ SyncMapRGCI 是一个面向自组织因果推断的研究项目：目标是一�
 
 *左：生成游走的隐藏结构。右：RG 经过 100,000 步后在其自身三维坐标中的映射；两个组相距很远，放大每个组即可看到其中的块呈现为更小的簇。*
 
-**初次访问？** [演示文稿](docs/presentation/index.html)（带演讲者备注的 HTML 幻灯片；单文件版本和 PDF 见[发布页面](https://github.com/Cyletix/SyncMapRGCI/releases)）从原始 SyncMap 讲到最终结果，逐步讲解 RG。[文档导航](docs/README.md)列出了其余所有内容。
+**初次访问？** [演示文稿](docs/presentation/index.html)（带演讲者备注的 HTML 幻灯片；单文件版本和 PDF 见[发布页面](https://github.com/Cyletix/SyncMapRGCI/releases)）从原始 SyncMap 讲到最终结果，逐步讲解 RG。没有 SyncMap 基础的读者可以先看[入门版](docs/presentation/beginner.html)。[文档导航](docs/README.md)列出了其余所有内容。
 
 ## 算法
 

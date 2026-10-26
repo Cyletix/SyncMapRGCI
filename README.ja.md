@@ -15,7 +15,7 @@ SyncMapRGCI は、自己組織化による因果推論を目指す研究プロ�
 
 *左：ウォークを生成する隠れた構造。右：100,000 ステップ後の RG のマップ（RG 自身の 3 次元座標）。2 つのグループは大きく離れており、各グループを拡大すると、そのチャンクがより小さなクラスタとして見えます。*
 
-**初めての方へ：** [プレゼンテーション](docs/presentation/index.html)（スピーカーノート付きの HTML スライド。単一ファイル版と PDF は [リリースページ](https://github.com/Cyletix/SyncMapRGCI/releases) にあります）では、元の SyncMap から結果まで、RG を順を追って説明しています。その他の資料はすべて [ドキュメントマップ](docs/README.md) に一覧があります。
+**初めての方へ：** [プレゼンテーション](docs/presentation/index.html)（スピーカーノート付きの HTML スライド。単一ファイル版と PDF は [リリースページ](https://github.com/Cyletix/SyncMapRGCI/releases) にあります）では、元の SyncMap から結果まで、RG を順を追って説明しています。SyncMap の予備知識がない方は、まず[入門版](docs/presentation/beginner.html)をご覧ください。その他の資料はすべて [ドキュメントマップ](docs/README.md) に一覧があります。
 
 ## アルゴリズム
 

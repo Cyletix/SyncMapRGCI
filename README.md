@@ -15,7 +15,7 @@ Combining the two, causal relations between the chunks RG discovers, exists only
 
 *Left: the hidden structure that generates the walk. Right: RG's map after 100,000 steps in its own 3-D coordinates; the two groups are far apart, and zooming into each group shows its chunks as smaller clusters.*
 
-**New here?** The [presentation](docs/presentation/index.html) (HTML slides with speaker notes; a single-file copy and a PDF are on the [releases page](https://github.com/Cyletix/SyncMapRGCI/releases)) explains RG step by step, from the original SyncMap to the results. The [documentation map](docs/README.md) lists everything else.
+**New here?** The [presentation](docs/presentation/index.html) (HTML slides with speaker notes; a single-file copy and a PDF are on the [releases page](https://github.com/Cyletix/SyncMapRGCI/releases)) explains RG step by step, from the original SyncMap to the results. Without a SyncMap background, start with the [beginner version](docs/presentation/beginner.html). The [documentation map](docs/README.md) lists everything else.
 
 ## Algorithms
 
